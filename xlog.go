@@ -59,11 +59,9 @@ type logger struct {
 
 // Common key names for log messages
 const (
-	KeyTime      = "time"
-	KeyMessage   = "message"
-	KeyLevel     = "level"
-	KeyIP        = "ip"
-	KeyUserAgent = "user-agent"
+	KeyTime    = "time"
+	KeyMessage = "message"
+	KeyLevel   = "level"
 )
 
 var now = time.Now

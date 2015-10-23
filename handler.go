@@ -62,7 +62,7 @@ func NewHandler(level Level, next xhandler.Handler) *Handler {
 	return h
 }
 
-// SetFields sets fields to append to all messages
+// SetFields sets fields to append to all messages.
 func (h *Handler) SetFields(f map[string]interface{}) {
 	h.fields = f
 }
@@ -120,12 +120,6 @@ func (h *Handler) NewLogger() Logger {
 // Implements xhandler.Handler interface
 func (h *Handler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	l := h.NewLogger()
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		l.SetField(KeyIP, host)
-	}
-	if ua := r.Header.Get("User-Agent"); ua != "" {
-		l.SetField(KeyUserAgent, ua)
-	}
 	ctx = newContext(ctx, l)
 	h.next.ServeHTTP(ctx, w, r)
 	if l, ok := l.(*logger); ok {
@@ -133,4 +127,70 @@ func (h *Handler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.
 		l.fields = nil
 		loggerPool.Put(l)
 	}
+}
+
+type remoteAddrHandler struct {
+	name string
+	next xhandler.Handler
+}
+
+// NewRemoteAddrHandler returns a handler setting the request's remote address as a field
+// to the current context's logger.
+func NewRemoteAddrHandler(name string, next xhandler.Handler) xhandler.Handler {
+	return &remoteAddrHandler{
+		name: name,
+		next: next,
+	}
+}
+
+// Implements xhandler.Handler interface
+func (h *remoteAddrHandler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+		FromContext(ctx).SetField(h.name, host)
+	}
+	h.next.ServeHTTP(ctx, w, r)
+}
+
+type userAgentHandler struct {
+	name string
+	next xhandler.Handler
+}
+
+// NewUserAgentHandler returns a handler setting the request's client's user-agent as
+// a field to the current context's logger.
+func NewUserAgentHandler(name string, next xhandler.Handler) xhandler.Handler {
+	return &userAgentHandler{
+		name: name,
+		next: next,
+	}
+}
+
+// Implements xhandler.Handler interface
+func (h *userAgentHandler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if ua := r.Header.Get("User-Agent"); ua != "" {
+		FromContext(ctx).SetField(h.name, ua)
+	}
+	h.next.ServeHTTP(ctx, w, r)
+}
+
+type refererHandler struct {
+	name string
+	next xhandler.Handler
+}
+
+// NewRefererHandler returns a handler setting the request's referer header as
+// a field to the current context's logger.
+func NewRefererHandler(name string, next xhandler.Handler) xhandler.Handler {
+	return &refererHandler{
+		name: name,
+		next: next,
+	}
+}
+
+// Implements xhandler.Handler interface
+func (h *refererHandler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	if ref := r.Header.Get("Referer"); ref != "" {
+		FromContext(ctx).SetField(h.name, ref)
+	}
+	h.next.ServeHTTP(ctx, w, r)
 }

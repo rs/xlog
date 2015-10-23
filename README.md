@@ -40,13 +40,26 @@ xh = xhandler.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *ht
     })
 })
 
+// Install some provided extra handler to set some request's context fields.
+// Thanks to those handler, all our logs will come with some pre-populated fields.
+xh = xlog.NewRemoteAddrHandler("ip", xh)
+xh = xlog.NewUserAgentHandler("user-agent", xh)
+xh = xlog.NewRefererHandler("referer", xh)
+
 // Install the logger handler with default output on the console
-xh = xlog.NewHandler(xlog.LevelDebug, xh)
+lh := xlog.NewHandler(xlog.LevelDebug, xh)
+
+// Set some global env fields
+host, _ := os.Hostname()
+lh.SetFields(xlog.F{
+    "role": "my-service",
+    "host": host,
+})
 
 // Root context
 var h http.Handler
 ctx := context.Background()
-h = xhandler.CtxHandler(ctx, xh)
+h = xhandler.CtxHandler(ctx, lh)
 http.Handle("/", h)
 
 if err := http.ListenAndServe(":8080", nil); err != nil {
