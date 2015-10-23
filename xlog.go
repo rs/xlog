@@ -14,7 +14,6 @@ package xlog // import "github.com/rs/xlog"
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 )
 
@@ -58,17 +57,6 @@ type logger struct {
 	fields map[string]interface{}
 }
 
-// Level defines log levels
-type Level int
-
-// Log levels
-const (
-	LevelDebug Level = iota
-	LevelInfo
-	LevelWarn
-	LevelError
-)
-
 // Common key names for log messages
 const (
 	KeyTime      = "time"
@@ -86,7 +74,7 @@ func (l *logger) send(level Level, msg string, fields map[string]interface{}) {
 	}
 	data := map[string]interface{}{
 		KeyTime:    now(),
-		KeyLevel:   levelName(level),
+		KeyLevel:   level.String(),
 		KeyMessage: msg,
 	}
 	for k, v := range fields {
@@ -100,21 +88,6 @@ func (l *logger) send(level Level, msg string, fields map[string]interface{}) {
 		// Sent with success
 	default:
 		// Channel is full, message dropped
-	}
-}
-
-func levelName(level Level) string {
-	switch level {
-	case LevelDebug:
-		return "debug"
-	case LevelInfo:
-		return "info"
-	case LevelWarn:
-		return "warn"
-	case LevelError:
-		return "error"
-	default:
-		return strconv.FormatInt(int64(level), 10)
 	}
 }
 

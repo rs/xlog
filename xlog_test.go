@@ -45,14 +45,6 @@ func TestSendDrop(t *testing.T) {
 	assert.Len(t, c, 1)
 }
 
-func TestLevelName(t *testing.T) {
-	assert.Equal(t, "debug", levelName(LevelDebug))
-	assert.Equal(t, "info", levelName(LevelInfo))
-	assert.Equal(t, "warn", levelName(LevelWarn))
-	assert.Equal(t, "error", levelName(LevelError))
-	assert.Equal(t, "10", levelName(10))
-}
-
 func TestWxtractFields(t *testing.T) {
 	v := []interface{}{"a", 1, map[string]interface{}{"foo": "bar"}}
 	f := extractFields(&v)
