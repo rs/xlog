@@ -9,7 +9,7 @@
 //   - Automatically gathers request context like User-Agent, IP etc.
 //   - Drops message rather than blocking execution
 //
-// It works best in combinason with github.com/rs/xhandler.
+// It works best in combination with github.com/rs/xhandler.
 package xlog // import "github.com/rs/xlog"
 
 import (

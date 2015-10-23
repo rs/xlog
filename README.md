@@ -13,7 +13,7 @@ xlog is a logger coupled with HTTP net/context aware middleware.
 - Automatically gathers request context like User-Agent, IP etc.
 - Drops message rather than blocking execution
 
-It works best in combinason with [github.com/rs/xhandler](https://github.com/rs/xhandler).
+It works best in combination with [github.com/rs/xhandler](https://github.com/rs/xhandler).
 
 ## Install
 
