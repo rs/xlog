@@ -16,7 +16,7 @@ type Handler struct {
 	level  Level
 	input  chan map[string]interface{}
 	output Output
-	next   xhandler.Handler
+	next   xhandler.HandlerC
 	stop   chan struct{}
 	fields map[string]interface{}
 }
@@ -51,7 +51,7 @@ func newContext(ctx context.Context, l Logger) context.Context {
 // By default, the output is set to ConsoleOutput(os.Stderr), you may change that using SetOutput().
 // The logger go routine is started automatically. You may start/stop this go routine
 // using Start()/Stop() methods.
-func NewHandler(level Level, next xhandler.Handler) *Handler {
+func NewHandler(level Level, next xhandler.HandlerC) *Handler {
 	h := &Handler{
 		level:  level,
 		input:  make(chan map[string]interface{}, 100),
@@ -117,11 +117,11 @@ func (h *Handler) NewLogger() Logger {
 	return l
 }
 
-// Implements xhandler.Handler interface
-func (h *Handler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// ServeHTTPC implements xhandler.HandlerC interface
+func (h *Handler) ServeHTTPC(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	l := h.NewLogger()
 	ctx = newContext(ctx, l)
-	h.next.ServeHTTP(ctx, w, r)
+	h.next.ServeHTTPC(ctx, w, r)
 	if l, ok := l.(*logger); ok {
 		l.output = nil
 		l.fields = nil
@@ -131,12 +131,12 @@ func (h *Handler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.
 
 type remoteAddrHandler struct {
 	name string
-	next xhandler.Handler
+	next xhandler.HandlerC
 }
 
 // NewRemoteAddrHandler returns a handler setting the request's remote address as a field
 // to the current context's logger.
-func NewRemoteAddrHandler(name string, next xhandler.Handler) xhandler.Handler {
+func NewRemoteAddrHandler(name string, next xhandler.HandlerC) xhandler.HandlerC {
 	return &remoteAddrHandler{
 		name: name,
 		next: next,
@@ -144,53 +144,53 @@ func NewRemoteAddrHandler(name string, next xhandler.Handler) xhandler.Handler {
 }
 
 // Implements xhandler.Handler interface
-func (h *remoteAddrHandler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (h *remoteAddrHandler) ServeHTTPC(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		FromContext(ctx).SetField(h.name, host)
 	}
-	h.next.ServeHTTP(ctx, w, r)
+	h.next.ServeHTTPC(ctx, w, r)
 }
 
 type userAgentHandler struct {
 	name string
-	next xhandler.Handler
+	next xhandler.HandlerC
 }
 
 // NewUserAgentHandler returns a handler setting the request's client's user-agent as
 // a field to the current context's logger.
-func NewUserAgentHandler(name string, next xhandler.Handler) xhandler.Handler {
+func NewUserAgentHandler(name string, next xhandler.HandlerC) xhandler.HandlerC {
 	return &userAgentHandler{
 		name: name,
 		next: next,
 	}
 }
 
-// Implements xhandler.Handler interface
-func (h *userAgentHandler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// Implements xhandler.HandlerC interface
+func (h *userAgentHandler) ServeHTTPC(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if ua := r.Header.Get("User-Agent"); ua != "" {
 		FromContext(ctx).SetField(h.name, ua)
 	}
-	h.next.ServeHTTP(ctx, w, r)
+	h.next.ServeHTTPC(ctx, w, r)
 }
 
 type refererHandler struct {
 	name string
-	next xhandler.Handler
+	next xhandler.HandlerC
 }
 
 // NewRefererHandler returns a handler setting the request's referer header as
 // a field to the current context's logger.
-func NewRefererHandler(name string, next xhandler.Handler) xhandler.Handler {
+func NewRefererHandler(name string, next xhandler.HandlerC) xhandler.HandlerC {
 	return &refererHandler{
 		name: name,
 		next: next,
 	}
 }
 
-// Implements xhandler.Handler interface
-func (h *refererHandler) ServeHTTP(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// Implements xhandler.HandlerC interface
+func (h *refererHandler) ServeHTTPC(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if ref := r.Header.Get("Referer"); ref != "" {
 		FromContext(ctx).SetField(h.name, ref)
 	}
-	h.next.ServeHTTP(ctx, w, r)
+	h.next.ServeHTTPC(ctx, w, r)
 }

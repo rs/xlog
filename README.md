@@ -22,10 +22,10 @@ It works best in combination with [github.com/rs/xhandler](https://github.com/rs
 ## Usage
 
 ```go
-var xh xhandler.CtxHandler
+var xh xhandler.HandlerC
 
 // Here is your handler
-xh = xhandler.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+xh = xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
     // Get the logger from the context. You can safely assume it will be always there,
     // if the handler is removed, xlog.FromContext will return a nopLogger
     log := xlog.FromContext(ctx)
@@ -59,7 +59,7 @@ lh.SetFields(xlog.F{
 // Root context
 var h http.Handler
 ctx := context.Background()
-h = xhandler.CtxHandler(ctx, lh)
+h = xhandler.Handler(ctx, lh)
 http.Handle("/", h)
 
 if err := http.ListenAndServe(":8080", nil); err != nil {
