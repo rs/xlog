@@ -41,8 +41,8 @@ func FromContext(ctx context.Context) Logger {
 	return l
 }
 
-// newContext restores a new context storing the given logger
-func newContext(ctx context.Context, l Logger) context.Context {
+// NewContext returns a copy of the parent context and associates it with passed logger.
+func NewContext(ctx context.Context, l Logger) context.Context {
 	return context.WithValue(ctx, logKey, l)
 }
 
@@ -120,7 +120,7 @@ func (h *Handler) NewLogger() Logger {
 // ServeHTTPC implements xhandler.HandlerC interface
 func (h *Handler) ServeHTTPC(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	l := h.NewLogger()
-	ctx = newContext(ctx, l)
+	ctx = NewContext(ctx, l)
 	h.next.ServeHTTPC(ctx, w, r)
 	if l, ok := l.(*logger); ok {
 		l.output = nil
