@@ -59,7 +59,7 @@ lh.SetFields(xlog.F{
 // Root context
 var h http.Handler
 ctx := context.Background()
-h = xhandler.Handler(ctx, lh)
+h = xhandler.New(ctx, lh)
 http.Handle("/", h)
 
 if err := http.ListenAndServe(":8080", nil); err != nil {
