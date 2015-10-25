@@ -131,7 +131,7 @@ func NewConsoleOutput() Output {
 func (o ConsoleOutput) Write(fields map[string]interface{}) error {
 	if msg, ok := fields[KeyMessage].(string); ok {
 		delete(fields, KeyMessage)
-		msg = strings.Replace(msg, "\n", "\\n", 0)
+		msg = strings.Replace(msg, "\n", "\\n", -1)
 		o.w.Write([]byte(msg + " "))
 	}
 	b, err := json.Marshal(fields)

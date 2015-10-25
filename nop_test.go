@@ -4,13 +4,14 @@ import "testing"
 
 func TestNopLogger(t *testing.T) {
 	// cheap cover score upper
-	nopLogger.SetField("name", "value")
-	nopLogger.Debug()
-	nopLogger.Debugf("format")
-	nopLogger.Info()
-	nopLogger.Infof("format")
-	nopLogger.Warn()
-	nopLogger.Warnf("format")
-	nopLogger.Error()
-	nopLogger.Errorf("format")
+	NopLogger.SetField("name", "value")
+	NopLogger.Debug()
+	NopLogger.Debugf("format")
+	NopLogger.Info()
+	NopLogger.Infof("format")
+	NopLogger.Warn()
+	NopLogger.Warnf("format")
+	NopLogger.Error()
+	NopLogger.Errorf("format")
+	NopLogger.Write([]byte{})
 }

@@ -32,14 +32,14 @@ var loggerPool = sync.Pool{
 }
 
 // FromContext gets the logger out of the context.
-// If not logger is stored in the context, a nopLogger is returned
+// If not logger is stored in the context, a NopLogger is returned
 func FromContext(ctx context.Context) Logger {
 	if ctx == nil {
-		return nopLogger
+		return NopLogger
 	}
 	l, ok := ctx.Value(logKey).(Logger)
 	if !ok {
-		return nopLogger
+		return NopLogger
 	}
 	return l
 }

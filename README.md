@@ -27,14 +27,14 @@ var xh xhandler.HandlerC
 // Here is your handler
 xh = xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
     // Get the logger from the context. You can safely assume it will be always there,
-    // if the handler is removed, xlog.FromContext will return a nopLogger
-    log := xlog.FromContext(ctx)
+    // if the handler is removed, xlog.FromContext will return a NopLogger
+    l := xlog.FromContext(ctx)
 
     // Then log some errors
-    log.Errorf("Here is an error: %v", err)
+    l.Errorf("Here is an error: %v", err)
 
     // Or some info with fields
-    log.Info("Something happend", xlog.F{
+    l.Info("Something happend", xlog.F{
         "user": user.ID,
         "status": status,
     })
@@ -55,6 +55,9 @@ lh.SetFields(xlog.F{
     "role": "my-service",
     "host": host,
 })
+
+// Plug the xlog handler's input to Go's default logger
+log.SetOutput(lh.NewLogger())
 
 // Root context
 var h http.Handler

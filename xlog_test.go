@@ -1,6 +1,7 @@
 package xlog
 
 import (
+	"log"
 	"testing"
 	"time"
 
@@ -129,4 +130,13 @@ func TestErrorf(t *testing.T) {
 	l.Errorf("test %d", 1, F{"foo": "bar"})
 	m := <-c
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar"}, m)
+}
+
+func TestWrite(t *testing.T) {
+	c := make(chan map[string]interface{}, 10)
+	xl := &logger{output: c}
+	l := log.New(xl, "prefix ", 0)
+	l.Printf("test")
+	m := <-c
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "prefix test"}, m)
 }

@@ -15,8 +15,8 @@ import (
 )
 
 func TestFromContext(t *testing.T) {
-	assert.Equal(t, nopLogger, FromContext(nil))
-	assert.Equal(t, nopLogger, FromContext(context.Background()))
+	assert.Equal(t, NopLogger, FromContext(nil))
+	assert.Equal(t, NopLogger, FromContext(context.Background()))
 	l := &logger{}
 	ctx := NewContext(context.Background(), l)
 	assert.Equal(t, l, FromContext(ctx))
@@ -88,7 +88,7 @@ func TestServeHTTPC(t *testing.T) {
 	h = NewHandler(LevelInfo, xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		l := FromContext(ctx)
 		assert.NotNil(t, l)
-		assert.NotEqual(t, nopLogger, l)
+		assert.NotEqual(t, NopLogger, l)
 		if l, ok := l.(*logger); assert.True(t, ok) {
 			assert.Equal(t, LevelInfo, l.level)
 			assert.Equal(t, h.input, l.output)

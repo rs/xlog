@@ -14,11 +14,16 @@ package xlog // import "github.com/rs/xlog"
 
 import (
 	"fmt"
+	"io"
+	"strings"
 	"time"
 )
 
 // Logger is per request logger interface
 type Logger interface {
+	// Implements io.Writer so it can be set a output of log.Logger
+	io.Writer
+
 	// SetField sets a field on the logger's context. All future messages on this logger
 	// will have this field set.
 	SetField(name string, value interface{})
@@ -157,4 +162,11 @@ func (l *logger) Error(v ...interface{}) {
 func (l *logger) Errorf(format string, v ...interface{}) {
 	f := extractFields(&v)
 	l.send(LevelError, fmt.Sprintf(format, v...), f)
+}
+
+// Write implements io.Writer interface
+func (l *logger) Write(p []byte) (int, error) {
+	msg := strings.TrimRight(string(p), "\n")
+	l.Info(msg)
+	return len(p), nil
 }
