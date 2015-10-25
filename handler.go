@@ -34,9 +34,12 @@ var loggerPool = sync.Pool{
 // FromContext gets the logger out of the context.
 // If not logger is stored in the context, a nopLogger is returned
 func FromContext(ctx context.Context) Logger {
+	if ctx == nil {
+		return nopLogger
+	}
 	l, ok := ctx.Value(logKey).(Logger)
 	if !ok {
-		l = nopLogger
+		return nopLogger
 	}
 	return l
 }
@@ -69,8 +72,10 @@ func (h *Handler) SetFields(f map[string]interface{}) {
 
 // SetOutput sets the output destination for the logs
 func (h *Handler) SetOutput(o Output) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	if h.stop != nil {
+		h.Stop()
+		defer h.Start()
+	}
 	h.output = o
 }
 
@@ -79,15 +84,17 @@ func (h *Handler) Start() {
 	h.mu.Lock()
 	if h.stop != nil {
 		// Already started
+		h.mu.Unlock()
 		return
 	}
 	h.stop = make(chan struct{})
+	output := h.output
 	h.mu.Unlock()
 	go func() {
 		for {
 			select {
 			case msg := <-h.input:
-				if err := h.output.Write(msg); err != nil {
+				if err := output.Write(msg); err != nil {
 					log.Printf("xlog: cannot write log message: %v", err)
 				}
 			case <-h.stop:

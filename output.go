@@ -14,6 +14,15 @@ type Output interface {
 	Write(fields map[string]interface{}) error
 }
 
+type discard struct{}
+
+func (o discard) Write(fields map[string]interface{}) (err error) {
+	return nil
+}
+
+// Discard discards log output
+var Discard = &discard{}
+
 // MultiOutput routes the same message to serveral outputs
 // If one or more outputs return error, the last error is returned.
 type MultiOutput []Output
