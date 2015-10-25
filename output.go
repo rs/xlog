@@ -37,25 +37,19 @@ func (m MultiOutput) Write(fields map[string]interface{}) (err error) {
 	return
 }
 
-// FilterOutput tests the value of a key and pass the message to the child output
-// only if the value of the defined key match one of the allowed values
+// FilterOutput test a condition on the message and forward it to the child output
+// if it returns true
 type FilterOutput struct {
-	Key    string
-	Values []interface{}
-	Invert bool
+	Cond   func(fields map[string]interface{}) bool
 	Output Output
 }
 
 func (f FilterOutput) Write(fields map[string]interface{}) (err error) {
-	if f.Output == nil || f.Key == "" || len(f.Values) == 0 {
+	if f.Output == nil {
 		return
 	}
-	if val, found := fields[f.Key]; found {
-		for _, allowed := range f.Values {
-			if (val == allowed) != f.Invert {
-				return f.Output.Write(fields)
-			}
-		}
+	if f.Cond(fields) {
+		return f.Output.Write(fields)
 	}
 	return
 }
@@ -86,42 +80,23 @@ func (l LevelOutput) Write(fields map[string]interface{}) error {
 	return nil
 }
 
-// ConsoleOutput writes the message key if present followed by other fields in a
-// given io.Writer.
-type ConsoleOutput struct {
-	w io.Writer
-}
-
-// NewConsoleOutput returns ConsoleOutputs in a LevelOutput with error levels on os.Stderr
-// and other on os.Stdin
-func NewConsoleOutput() Output {
-	o := &ConsoleOutput{w: os.Stdout}
-	e := &ConsoleOutput{w: os.Stderr}
-	return &LevelOutput{
-		Debug: o,
-		Info:  o,
-		Warn:  e,
-		Error: e,
-	}
-}
-
 // NewSyslogOutput returns JSONOutputs in a LevelOutput with writers set to syslog
 // with the proper priority.
 // If network and address are empty, Dial will connect to the local syslog server.
 func NewSyslogOutput(network, address, tag string) Output {
 	var err error
-	o := &LevelOutput{}
+	o := LevelOutput{}
 	if o.Debug, err = newJSONSyslogOutput(network, address, syslog.LOG_DEBUG, tag); err != nil {
-		log.Fatalf("xlog: syslog error: %v", err)
+		log.Panicf("xlog: syslog error: %v", err)
 	}
 	if o.Info, err = newJSONSyslogOutput(network, address, syslog.LOG_INFO, tag); err != nil {
-		log.Fatalf("xlog: syslog error: %v", err)
+		log.Panicf("xlog: syslog error: %v", err)
 	}
 	if o.Warn, err = newJSONSyslogOutput(network, address, syslog.LOG_WARNING, tag); err != nil {
-		log.Fatalf("xlog: syslog error: %v", err)
+		log.Panicf("xlog: syslog error: %v", err)
 	}
 	if o.Error, err = newJSONSyslogOutput(network, address, syslog.LOG_ERR, tag); err != nil {
-		log.Fatalf("xlog: syslog error: %v", err)
+		log.Panicf("xlog: syslog error: %v", err)
 	}
 	return o
 }
@@ -132,6 +107,25 @@ func newJSONSyslogOutput(network, address string, prio syslog.Priority, tag stri
 		return nil, err
 	}
 	return NewJSONOutput(s), nil
+}
+
+// ConsoleOutput writes the message key if present followed by other fields in a
+// given io.Writer.
+type ConsoleOutput struct {
+	w io.Writer
+}
+
+// NewConsoleOutput returns ConsoleOutputs in a LevelOutput with error levels on os.Stderr
+// and other on os.Stdin
+func NewConsoleOutput() Output {
+	o := ConsoleOutput{w: os.Stdout}
+	e := ConsoleOutput{w: os.Stderr}
+	return LevelOutput{
+		Debug: o,
+		Info:  o,
+		Warn:  e,
+		Error: e,
+	}
 }
 
 func (o ConsoleOutput) Write(fields map[string]interface{}) error {
@@ -157,8 +151,8 @@ type JSONOutput struct {
 }
 
 // NewJSONOutput returns a new JSONOutput with the given writer
-func NewJSONOutput(w io.Writer) *JSONOutput {
-	return &JSONOutput{w: w}
+func NewJSONOutput(w io.Writer) Output {
+	return JSONOutput{w: w}
 }
 
 func (o JSONOutput) Write(fields map[string]interface{}) error {

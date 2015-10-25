@@ -78,8 +78,9 @@ logH = xlog.NewHandler(xlog.LevelDebug, nextHandler)
 logH.SetOutput(xlog.MultiOutput{
     // Send all logs with field type=mymodule to a remote syslog
     xlog.FilterOutput{
-        Key: "type",
-        Values: []interface{}{"mymodule"},
+        Cond: func(fields map[string]interface{}) bool {
+            return fields["type"] == "mymodule"
+        },
         Output: xlog.NewSyslogOutput("tcp", "1.2.3.4:1234", "mymodule"),
     },
     // Setup different output per log level

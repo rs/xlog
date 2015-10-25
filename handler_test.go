@@ -43,16 +43,6 @@ func TestOutput(t *testing.T) {
 	assert.Equal(t, Discard, h.output)
 }
 
-type testOutput struct {
-	err  error
-	last map[string]interface{}
-}
-
-func (o *testOutput) Write(fields map[string]interface{}) (err error) {
-	o.last = fields
-	return o.err
-}
-
 func TestChannel(t *testing.T) {
 	h := NewHandler(0, nil)
 	defer h.Stop()
