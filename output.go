@@ -23,7 +23,7 @@ func (o discard) Write(fields map[string]interface{}) (err error) {
 // Discard discards log output
 var Discard = &discard{}
 
-// MultiOutput routes the same message to serveral outputs
+// MultiOutput routes the same message to serveral outputs.
 // If one or more outputs return error, the last error is returned.
 type MultiOutput []Output
 
