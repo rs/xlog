@@ -120,7 +120,7 @@ func TestLevelOutput(t *testing.T) {
 }
 
 func TestSyslogOutput(t *testing.T) {
-	m := NewSyslogOutput("", "", "mytag")
+	m := NewSyslogOutput("udp", "127.0.0.1:1234", "mytag")
 	assert.IsType(t, LevelOutput{}, m)
 	assert.Panics(t, func() {
 		NewSyslogOutput("tcp", "an invalid host name", "mytag")
