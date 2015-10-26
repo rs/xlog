@@ -12,6 +12,7 @@ xlog is a logger coupled with HTTP net/context aware middleware.
 - Custom output
 - Automatically gathers request context like User-Agent, IP etc.
 - Drops message rather than blocking execution
+- Easy access logging thru [github.com/rs/xaccess](https://github.com/rs/xaccess)
 
 It works best in combination with [github.com/rs/xhandler](https://github.com/rs/xhandler).
 
