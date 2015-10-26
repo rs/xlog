@@ -29,6 +29,13 @@ func TestNewHandler(t *testing.T) {
 	assert.Equal(t, 100, cap(h.input))
 }
 
+func TestStop(t *testing.T) {
+	h := NewHandler(LevelDebug, nil)
+	assert.NotNil(t, h.stop)
+	h.Stop()
+	assert.Nil(t, h.stop)
+}
+
 func TestSetFields(t *testing.T) {
 	h := NewHandler(0, nil)
 	defer h.Stop()

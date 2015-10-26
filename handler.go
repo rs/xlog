@@ -98,7 +98,8 @@ func (h *Handler) Start() {
 					log.Printf("xlog: cannot write log message: %v", err)
 				}
 			case <-h.stop:
-				break
+				close(h.stop)
+				return
 			}
 		}
 	}()
@@ -106,9 +107,13 @@ func (h *Handler) Start() {
 
 // Stop stops the logger go routine
 func (h *Handler) Stop() {
+	if h.stop == nil {
+		return
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	close(h.stop)
+	h.stop <- struct{}{}
+	<-h.stop
 	h.stop = nil
 }
 
