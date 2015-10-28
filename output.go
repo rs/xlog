@@ -94,16 +94,16 @@ func (l LevelOutput) Write(fields map[string]interface{}) error {
 func NewSyslogOutput(network, address, tag string) Output {
 	var err error
 	o := LevelOutput{}
-	if o.Debug, err = newJSONSyslogOutput(network, address, syslog.LOG_DEBUG, tag); err != nil {
+	if o.Debug, err = newJSONSyslogOutput(network, address, syslog.LOG_USER|syslog.LOG_DEBUG, tag); err != nil {
 		log.Panicf("xlog: syslog error: %v", err)
 	}
-	if o.Info, err = newJSONSyslogOutput(network, address, syslog.LOG_INFO, tag); err != nil {
+	if o.Info, err = newJSONSyslogOutput(network, address, syslog.LOG_USER|syslog.LOG_INFO, tag); err != nil {
 		log.Panicf("xlog: syslog error: %v", err)
 	}
-	if o.Warn, err = newJSONSyslogOutput(network, address, syslog.LOG_WARNING, tag); err != nil {
+	if o.Warn, err = newJSONSyslogOutput(network, address, syslog.LOG_USER|syslog.LOG_WARNING, tag); err != nil {
 		log.Panicf("xlog: syslog error: %v", err)
 	}
-	if o.Error, err = newJSONSyslogOutput(network, address, syslog.LOG_ERR, tag); err != nil {
+	if o.Error, err = newJSONSyslogOutput(network, address, syslog.LOG_USER|syslog.LOG_ERR, tag); err != nil {
 		log.Panicf("xlog: syslog error: %v", err)
 	}
 	return o
