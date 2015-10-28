@@ -1,12 +1,14 @@
 package xlog
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"log"
 	"log/syslog"
 	"os"
 	"strings"
+	"sync"
 )
 
 // Output sends a log message fields to its destination
@@ -22,6 +24,12 @@ func (o discard) Write(fields map[string]interface{}) (err error) {
 
 // Discard discards log output
 var Discard = &discard{}
+
+var bufPool = &sync.Pool{
+	New: func() interface{} {
+		return &bytes.Buffer{}
+	},
+}
 
 // MultiOutput routes the same message to serveral outputs.
 // If one or more outputs return error, the last error is returned.
@@ -129,19 +137,25 @@ func NewConsoleOutput() Output {
 }
 
 func (o ConsoleOutput) Write(fields map[string]interface{}) error {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
 	if msg, ok := fields[KeyMessage].(string); ok {
 		delete(fields, KeyMessage)
 		msg = strings.Replace(msg, "\n", "\\n", -1)
-		o.w.Write([]byte(msg + " "))
+		buf.Write([]byte(msg + " "))
 	}
 	b, err := json.Marshal(fields)
 	if err != nil {
 		return err
 	}
-	if _, err = o.w.Write(b); err != nil {
+	buf.Write(b)
+	buf.WriteByte('\n')
+	if _, err = o.w.Write(buf.Bytes()); err != nil {
 		return err
 	}
-	o.w.Write([]byte{'\n'})
 	return nil
 }
 
@@ -156,13 +170,19 @@ func NewJSONOutput(w io.Writer) Output {
 }
 
 func (o JSONOutput) Write(fields map[string]interface{}) error {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
 	b, err := json.Marshal(fields)
 	if err != nil {
 		return err
 	}
-	if _, err = o.w.Write(b); err != nil {
+	buf.Write(b)
+	buf.WriteByte('\n')
+	if _, err = o.w.Write(buf.Bytes()); err != nil {
 		return err
 	}
-	o.w.Write([]byte{'\n'})
 	return nil
 }
