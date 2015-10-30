@@ -35,7 +35,7 @@ lh.SetFields(xlog.F{
     "host": host,
 })
 
-c.UseC(lh.Handle)
+c.UseC(lh.HandlerC)
 
 // Plug the xlog handler's input to Go's default logger
 log.SetOutput(lh.NewLogger())

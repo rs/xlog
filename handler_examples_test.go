@@ -24,7 +24,7 @@ func Example_handler() {
 		"host": host,
 	})
 
-	c.UseC(lh.Handle)
+	c.UseC(lh.HandlerC)
 
 	// Plug the xlog handler's input to Go's default logger
 	log.SetOutput(lh.NewLogger())
@@ -74,6 +74,6 @@ func Example_stdlog() {
 	// Root context
 	var h http.Handler
 	ctx := context.Background()
-	h = xhandler.New(ctx, lh.Handle(xh))
+	h = xhandler.New(ctx, lh.HandlerC(xh))
 	http.Handle("/", h)
 }

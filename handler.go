@@ -127,8 +127,8 @@ func (h *Handler) NewLogger() Logger {
 	return l
 }
 
-// Handle returns a xhandler.HandlerC compatible handler
-func (h *Handler) Handle(next xhandler.HandlerC) xhandler.HandlerC {
+// HandlerC returns a xhandler.HandlerC compatible handler
+func (h *Handler) HandlerC(next xhandler.HandlerC) xhandler.HandlerC {
 	return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		l := h.NewLogger()
 		ctx = NewContext(ctx, l)

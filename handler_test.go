@@ -94,7 +94,7 @@ func TestNewLogger(t *testing.T) {
 func TestServeHTTPC(t *testing.T) {
 	lh := NewHandler(LevelInfo)
 	lh.SetFields(F{"foo": "bar"})
-	h := lh.Handle(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	h := lh.HandlerC(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		l := FromContext(ctx)
 		assert.NotNil(t, l)
 		assert.NotEqual(t, NopLogger, l)
@@ -115,7 +115,7 @@ func TestRemoteAddrHandler(t *testing.T) {
 		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"ip": "1.2.3.4"}, F(l.fields))
 	}))
-	h = NewHandler(LevelInfo).Handle(h)
+	h = NewHandler(LevelInfo).HandlerC(h)
 	h.ServeHTTPC(context.Background(), nil, r)
 }
 
@@ -127,7 +127,7 @@ func TestRemoteAddrHandlerIPv6(t *testing.T) {
 		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"ip": "2001:db8:a0b:12f0::1"}, F(l.fields))
 	}))
-	h = NewHandler(LevelInfo).Handle(h)
+	h = NewHandler(LevelInfo).HandlerC(h)
 	h.ServeHTTPC(context.Background(), nil, r)
 }
 
@@ -141,7 +141,7 @@ func TestUserAgentHandler(t *testing.T) {
 		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"ua": "some user agent string"}, F(l.fields))
 	}))
-	h = NewHandler(LevelInfo).Handle(h)
+	h = NewHandler(LevelInfo).HandlerC(h)
 	h.ServeHTTPC(context.Background(), nil, r)
 }
 
@@ -155,6 +155,6 @@ func TestRefererHandler(t *testing.T) {
 		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"ua": "http://foo.com/bar"}, F(l.fields))
 	}))
-	h = NewHandler(LevelInfo).Handle(h)
+	h = NewHandler(LevelInfo).HandlerC(h)
 	h.ServeHTTPC(context.Background(), nil, r)
 }
