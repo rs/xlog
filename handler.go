@@ -16,7 +16,6 @@ type Handler struct {
 	level  Level
 	input  chan map[string]interface{}
 	output Output
-	next   xhandler.HandlerC
 	stop   chan struct{}
 	fields map[string]interface{}
 }
@@ -54,12 +53,11 @@ func NewContext(ctx context.Context, l Logger) context.Context {
 // By default, the output is set to ConsoleOutput(os.Stderr), you may change that using SetOutput().
 // The logger go routine is started automatically. You may start/stop this go routine
 // using Start()/Stop() methods.
-func NewHandler(level Level, next xhandler.HandlerC) *Handler {
+func NewHandler(level Level) *Handler {
 	h := &Handler{
 		level:  level,
 		input:  make(chan map[string]interface{}, 100),
 		output: NewConsoleOutput(),
-		next:   next,
 	}
 	h.Start()
 	return h
@@ -129,80 +127,55 @@ func (h *Handler) NewLogger() Logger {
 	return l
 }
 
-// ServeHTTPC implements xhandler.HandlerC interface
-func (h *Handler) ServeHTTPC(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	l := h.NewLogger()
-	ctx = NewContext(ctx, l)
-	h.next.ServeHTTPC(ctx, w, r)
-	if l, ok := l.(*logger); ok {
-		l.output = nil
-		l.fields = nil
-		loggerPool.Put(l)
-	}
+// Handle returns a xhandler.HandlerC compatible handler
+func (h *Handler) Handle(next xhandler.HandlerC) xhandler.HandlerC {
+	return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := h.NewLogger()
+		ctx = NewContext(ctx, l)
+		next.ServeHTTPC(ctx, w, r)
+		if l, ok := l.(*logger); ok {
+			l.output = nil
+			l.fields = nil
+			loggerPool.Put(l)
+		}
+	})
 }
 
-type remoteAddrHandler struct {
-	name string
-	next xhandler.HandlerC
-}
-
-// NewRemoteAddrHandler returns a handler setting the request's remote address as a field
+// RemoteAddrHandler returns a handler setting the request's remote address as a field
 // to the current context's logger.
-func NewRemoteAddrHandler(name string, next xhandler.HandlerC) xhandler.HandlerC {
-	return &remoteAddrHandler{
-		name: name,
-		next: next,
+func RemoteAddrHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC {
+	return func(next xhandler.HandlerC) xhandler.HandlerC {
+		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+				FromContext(ctx).SetField(name, host)
+			}
+			next.ServeHTTPC(ctx, w, r)
+		})
 	}
 }
 
-// Implements xhandler.Handler interface
-func (h *remoteAddrHandler) ServeHTTPC(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		FromContext(ctx).SetField(h.name, host)
-	}
-	h.next.ServeHTTPC(ctx, w, r)
-}
-
-type userAgentHandler struct {
-	name string
-	next xhandler.HandlerC
-}
-
-// NewUserAgentHandler returns a handler setting the request's client's user-agent as
+// UserAgentHandler returns a handler setting the request's client's user-agent as
 // a field to the current context's logger.
-func NewUserAgentHandler(name string, next xhandler.HandlerC) xhandler.HandlerC {
-	return &userAgentHandler{
-		name: name,
-		next: next,
+func UserAgentHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC {
+	return func(next xhandler.HandlerC) xhandler.HandlerC {
+		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			if ua := r.Header.Get("User-Agent"); ua != "" {
+				FromContext(ctx).SetField(name, ua)
+			}
+			next.ServeHTTPC(ctx, w, r)
+		})
 	}
 }
 
-// Implements xhandler.HandlerC interface
-func (h *userAgentHandler) ServeHTTPC(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	if ua := r.Header.Get("User-Agent"); ua != "" {
-		FromContext(ctx).SetField(h.name, ua)
-	}
-	h.next.ServeHTTPC(ctx, w, r)
-}
-
-type refererHandler struct {
-	name string
-	next xhandler.HandlerC
-}
-
-// NewRefererHandler returns a handler setting the request's referer header as
+// RefererHandler returns a handler setting the request's referer header as
 // a field to the current context's logger.
-func NewRefererHandler(name string, next xhandler.HandlerC) xhandler.HandlerC {
-	return &refererHandler{
-		name: name,
-		next: next,
+func RefererHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC {
+	return func(next xhandler.HandlerC) xhandler.HandlerC {
+		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			if ref := r.Header.Get("Referer"); ref != "" {
+				FromContext(ctx).SetField(name, ref)
+			}
+			next.ServeHTTPC(ctx, w, r)
+		})
 	}
-}
-
-// Implements xhandler.HandlerC interface
-func (h *refererHandler) ServeHTTPC(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	if ref := r.Header.Get("Referer"); ref != "" {
-		FromContext(ctx).SetField(h.name, ref)
-	}
-	h.next.ServeHTTPC(ctx, w, r)
 }

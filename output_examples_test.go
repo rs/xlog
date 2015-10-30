@@ -3,7 +3,7 @@ package xlog_test
 import "github.com/rs/xlog"
 
 func Example_combinedOutputs() {
-	lh := xlog.NewHandler(xlog.LevelDebug, nil) // next handler is nil for this example
+	lh := xlog.NewHandler(xlog.LevelDebug)
 
 	lh.SetOutput(xlog.MultiOutput{
 		// Output interesting messages to console
@@ -28,11 +28,10 @@ func Example_combinedOutputs() {
 		// Also send everything over syslog
 		xlog.NewSyslogOutput("", "", ""),
 	})
-
 }
 
 func ExampleMultiOutput() {
-	lh := xlog.NewHandler(xlog.LevelDebug, nil) // next handler is nil for this example
+	lh := xlog.NewHandler(xlog.LevelDebug)
 
 	lh.SetOutput(xlog.MultiOutput{
 		// Output everything to console
@@ -43,7 +42,7 @@ func ExampleMultiOutput() {
 }
 
 func ExampleFilterOutput() {
-	lh := xlog.NewHandler(xlog.LevelDebug, nil) // next handler is nil for this example
+	lh := xlog.NewHandler(xlog.LevelDebug)
 
 	lh.SetOutput(xlog.FilterOutput{
 		// Match messages containing a field type = interesting
@@ -57,7 +56,7 @@ func ExampleFilterOutput() {
 }
 
 func ExampleLevelOutput() {
-	lh := xlog.NewHandler(xlog.LevelDebug, nil) // next handler is nil for this example
+	lh := xlog.NewHandler(xlog.LevelDebug)
 
 	lh.SetOutput(xlog.LevelOutput{
 		// Send debug message to console

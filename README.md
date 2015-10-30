@@ -23,32 +23,10 @@ It works best in combination with [github.com/rs/xhandler](https://github.com/rs
 ## Usage
 
 ```go
-var xh xhandler.HandlerC
-
-// Here is your handler
-xh = xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-    // Get the logger from the context. You can safely assume it will be always there,
-    // if the handler is removed, xlog.FromContext will return a NopLogger
-    l := xlog.FromContext(ctx)
-
-    // Then log some errors
-    l.Errorf("Here is an error: %v", err)
-
-    // Or some info with fields
-    l.Info("Something happend", xlog.F{
-        "user": user.ID,
-        "status": status,
-    })
-})
-
-// Install some provided extra handler to set some request's context fields.
-// Thanks to those handler, all our logs will come with some pre-populated fields.
-xh = xlog.NewRemoteAddrHandler("ip", xh)
-xh = xlog.NewUserAgentHandler("user-agent", xh)
-xh = xlog.NewRefererHandler("referer", xh)
+c := xhandler.Chain{}
 
 // Install the logger handler with default output on the console
-lh := xlog.NewHandler(xlog.LevelDebug, xh)
+lh := xlog.NewHandler(xlog.LevelDebug)
 
 // Set some global env fields
 host, _ := os.Hostname()
@@ -57,13 +35,34 @@ lh.SetFields(xlog.F{
     "host": host,
 })
 
+c.UseC(lh.Handle)
+
 // Plug the xlog handler's input to Go's default logger
 log.SetOutput(lh.NewLogger())
 
-// Root context
-var h http.Handler
-ctx := context.Background()
-h = xhandler.New(ctx, lh)
+// Install some provided extra handler to set some request's context fields.
+// Thanks to those handler, all our logs will come with some pre-populated fields.
+c.UseC(xlog.RemoteAddrHandler("ip"))
+c.UseC(xlog.UserAgentHandler("user-agent"))
+c.UseC(xlog.RefererHandler("referer"))
+
+// Here is your final handler
+h := c.Handler(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+    // Get the logger from the context. You can safely assume it will be always there,
+    // if the handler is removed, xlog.FromContext will return a NopLogger
+    l := xlog.FromContext(ctx)
+
+    // Then log some errors
+    if err := errors.New("some error from elsewhere"); err != nil {
+        l.Errorf("Here is an error: %v", err)
+    }
+
+    // Or some info with fields
+    l.Info("Something happend", xlog.F{
+        "user":   "current user id",
+        "status": "ok",
+    })
+}))
 http.Handle("/", h)
 
 if err := http.ListenAndServe(":8080", nil); err != nil {
@@ -78,8 +77,8 @@ By default, output is setup to output debug and info message on `STDOUT` and war
 XLog output can be customized using composable output handlers. Thanks to the [LevelOutput](https://godoc.org/github.com/rs/xlog#LevelOutput), [MultiOutput](https://godoc.org/github.com/rs/xlog#MultiOutput) and [FilterOutput](https://godoc.org/github.com/rs/xlog#FilterOutput), it is easy to route messages precisely.
 
 ```go
-logH = xlog.NewHandler(xlog.LevelDebug, nextHandler)
-logH.SetOutput(xlog.MultiOutput{
+lh = xlog.NewHandler(xlog.LevelDebug)
+lh.SetOutput(xlog.MultiOutput{
     // Send all logs with field type=mymodule to a remote syslog
     xlog.FilterOutput{
         Cond: func(fields map[string]interface{}) bool {
