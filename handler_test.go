@@ -34,6 +34,7 @@ func TestStop(t *testing.T) {
 	assert.NotNil(t, h.stop)
 	h.Stop()
 	assert.Nil(t, h.stop)
+	h.Stop()
 }
 
 func TestSetFields(t *testing.T) {
