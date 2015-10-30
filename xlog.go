@@ -74,7 +74,7 @@ const (
 
 var now = time.Now
 
-func (l *logger) send(level Level, msg string, fields map[string]interface{}) {
+func (l *logger) send(level Level, calldepth int, msg string, fields map[string]interface{}) {
 	if level < l.level {
 		return
 	}
@@ -83,7 +83,7 @@ func (l *logger) send(level Level, msg string, fields map[string]interface{}) {
 		KeyLevel:   level.String(),
 		KeyMessage: msg,
 	}
-	if _, file, line, ok := runtime.Caller(2); ok {
+	if _, file, line, ok := runtime.Caller(calldepth); ok {
 		data[KeyFile] = fmt.Sprintf("%s:%d", path.Base(file), line)
 	}
 	for k, v := range fields {
@@ -125,54 +125,54 @@ func (l *logger) SetField(name string, value interface{}) {
 // Debug implements Logger interface
 func (l *logger) Debug(v ...interface{}) {
 	f := extractFields(&v)
-	l.send(LevelDebug, fmt.Sprint(v...), f)
+	l.send(LevelDebug, 2, fmt.Sprint(v...), f)
 }
 
 // Debugf implements Logger interface
 func (l *logger) Debugf(format string, v ...interface{}) {
 	f := extractFields(&v)
-	l.send(LevelDebug, fmt.Sprintf(format, v...), f)
+	l.send(LevelDebug, 2, fmt.Sprintf(format, v...), f)
 }
 
 // Info implements Logger interface
 func (l *logger) Info(v ...interface{}) {
 	f := extractFields(&v)
-	l.send(LevelInfo, fmt.Sprint(v...), f)
+	l.send(LevelInfo, 2, fmt.Sprint(v...), f)
 }
 
 // Infof implements Logger interface
 func (l *logger) Infof(format string, v ...interface{}) {
 	f := extractFields(&v)
-	l.send(LevelInfo, fmt.Sprintf(format, v...), f)
+	l.send(LevelInfo, 2, fmt.Sprintf(format, v...), f)
 }
 
 // Warn implements Logger interface
 func (l *logger) Warn(v ...interface{}) {
 	f := extractFields(&v)
-	l.send(LevelWarn, fmt.Sprint(v...), f)
+	l.send(LevelWarn, 2, fmt.Sprint(v...), f)
 }
 
 // Warnf implements Logger interface
 func (l *logger) Warnf(format string, v ...interface{}) {
 	f := extractFields(&v)
-	l.send(LevelWarn, fmt.Sprintf(format, v...), f)
+	l.send(LevelWarn, 2, fmt.Sprintf(format, v...), f)
 }
 
 // Error implements Logger interface
 func (l *logger) Error(v ...interface{}) {
 	f := extractFields(&v)
-	l.send(LevelError, fmt.Sprint(v...), f)
+	l.send(LevelError, 2, fmt.Sprint(v...), f)
 }
 
 // Errorf implements Logger interface
 func (l *logger) Errorf(format string, v ...interface{}) {
 	f := extractFields(&v)
-	l.send(LevelError, fmt.Sprintf(format, v...), f)
+	l.send(LevelError, 2, fmt.Sprintf(format, v...), f)
 }
 
 // Write implements io.Writer interface
 func (l *logger) Write(p []byte) (int, error) {
 	msg := strings.TrimRight(string(p), "\n")
-	l.Info(msg)
+	l.send(LevelInfo, 4, msg, nil)
 	return len(p), nil
 }
