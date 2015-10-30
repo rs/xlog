@@ -15,6 +15,8 @@ package xlog // import "github.com/rs/xlog"
 import (
 	"fmt"
 	"io"
+	"path"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -67,6 +69,7 @@ const (
 	KeyTime    = "time"
 	KeyMessage = "message"
 	KeyLevel   = "level"
+	KeyFile    = "file"
 )
 
 var now = time.Now
@@ -79,6 +82,9 @@ func (l *logger) send(level Level, msg string, fields map[string]interface{}) {
 		KeyTime:    now(),
 		KeyLevel:   level.String(),
 		KeyMessage: msg,
+	}
+	if _, file, line, ok := runtime.Caller(2); ok {
+		data[KeyFile] = fmt.Sprintf("%s:%d", path.Base(file), line)
 	}
 	for k, v := range fields {
 		data[k] = v
