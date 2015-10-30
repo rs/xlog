@@ -4,6 +4,8 @@
 
 xlog is a logger coupled with HTTP net/context aware middleware.
 
+Read more about xlog on [Dailymotion engineering blog](http://engineering.dailymotion.com/our-way-to-go/).
+
 ## Features
 
 - Per request log context
