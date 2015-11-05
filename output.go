@@ -89,21 +89,28 @@ func (l LevelOutput) Write(fields map[string]interface{}) error {
 }
 
 // NewSyslogOutput returns JSONOutputs in a LevelOutput with writers set to syslog
-// with the proper priority.
+// with the proper priority added to a LOG_USER facility.
 // If network and address are empty, Dial will connect to the local syslog server.
 func NewSyslogOutput(network, address, tag string) Output {
+	return NewSyslogOutputFacility(network, address, tag, syslog.LOG_USER)
+}
+
+// NewSyslogOutputFacility returns JSONOutputs in a LevelOutput with writers set to syslog
+// with the proper priority added to the passed facility.
+// If network and address are empty, Dial will connect to the local syslog server.
+func NewSyslogOutputFacility(network, address, tag string, facility syslog.Priority) Output {
 	var err error
 	o := LevelOutput{}
-	if o.Debug, err = newJSONSyslogOutput(network, address, syslog.LOG_USER|syslog.LOG_DEBUG, tag); err != nil {
+	if o.Debug, err = newJSONSyslogOutput(network, address, facility|syslog.LOG_DEBUG, tag); err != nil {
 		log.Panicf("xlog: syslog error: %v", err)
 	}
-	if o.Info, err = newJSONSyslogOutput(network, address, syslog.LOG_USER|syslog.LOG_INFO, tag); err != nil {
+	if o.Info, err = newJSONSyslogOutput(network, address, facility|syslog.LOG_INFO, tag); err != nil {
 		log.Panicf("xlog: syslog error: %v", err)
 	}
-	if o.Warn, err = newJSONSyslogOutput(network, address, syslog.LOG_USER|syslog.LOG_WARNING, tag); err != nil {
+	if o.Warn, err = newJSONSyslogOutput(network, address, facility|syslog.LOG_WARNING, tag); err != nil {
 		log.Panicf("xlog: syslog error: %v", err)
 	}
-	if o.Error, err = newJSONSyslogOutput(network, address, syslog.LOG_USER|syslog.LOG_ERR, tag); err != nil {
+	if o.Error, err = newJSONSyslogOutput(network, address, facility|syslog.LOG_ERR, tag); err != nil {
 		log.Panicf("xlog: syslog error: %v", err)
 	}
 	return o
