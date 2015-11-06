@@ -68,6 +68,17 @@ h := c.Handler(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWr
         "user":   "current user id",
         "status": "ok",
     })
+    // Output:
+    // {
+    //   "message": "Something happend",
+    //   "user": "current user id",
+    //   "status": "ok",
+    //   "ip": "1.2.3.4",
+    //   "user-agent": "Mozilla/1.2.3...",
+    //   "referer": "http://somewhere.com/path",
+    //   "role": "my-service",
+    //   "host": "somehost"
+    // }
 }))
 http.Handle("/", h)
 
