@@ -16,6 +16,7 @@ type Output interface {
 	Write(fields map[string]interface{}) error
 }
 
+// OutputChannel is a send channel between xlog and an Output
 type OutputChannel struct {
 	input chan map[string]interface{}
 	stop  chan struct{}

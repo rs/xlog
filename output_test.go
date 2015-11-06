@@ -43,6 +43,14 @@ func TestOutputChannel(t *testing.T) {
 	assert.Contains(t, buf.String(), "xlog: cannot write log message: some error")
 }
 
+func TestOutputChannelClose(t *testing.T) {
+	oc := NewOutputChannel(&testOutput{})
+	assert.NotNil(t, oc.stop)
+	oc.Close()
+	assert.Nil(t, oc.stop)
+	oc.Close()
+}
+
 func TestDiscard(t *testing.T) {
 	assert.NoError(t, Discard.Write(F{}))
 }
