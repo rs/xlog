@@ -18,6 +18,7 @@ import (
 	"path"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -55,12 +56,22 @@ type Logger interface {
 	Errorf(format string, v ...interface{})
 }
 
+// Config defines logger's config
+type Config struct {
+	// Level is the maximum level to output, logs with lower level are discarded
+	Level Level
+	// Fields defines default fields to use with all messages
+	Fields map[string]interface{}
+	// Output is the channel to use to write log messages to
+	Output *OutputChannel
+}
+
 // F represents a set of log message fields string -> interface{}
 type F map[string]interface{}
 
 type logger struct {
 	level  Level
-	output chan map[string]interface{}
+	output *OutputChannel
 	fields map[string]interface{}
 }
 
@@ -73,6 +84,36 @@ const (
 )
 
 var now = time.Now
+
+type key int
+
+const logKey key = 0
+
+var loggerPool = sync.Pool{
+	New: func() interface{} {
+		return &logger{}
+	},
+}
+
+// New manually creates a logger.
+//
+// This function should only be used out of a request. Use FromContext in request.
+func New(c Config) Logger {
+	l := loggerPool.Get().(*logger)
+	l.level = c.Level
+	l.output = c.Output
+	for k, v := range c.Fields {
+		l.SetField(k, v)
+	}
+	return l
+}
+
+func (l *logger) close() {
+	l.level = 0
+	l.output = nil
+	l.fields = nil
+	loggerPool.Put(l)
+}
 
 func (l *logger) send(level Level, calldepth int, msg string, fields map[string]interface{}) {
 	if level < l.level {
@@ -93,7 +134,7 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 		data[k] = v
 	}
 	select {
-	case l.output <- data:
+	case l.output.input <- data:
 		// Sent with success
 	default:
 		// Channel is full, message dropped

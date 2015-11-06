@@ -27,20 +27,24 @@ It works best in combination with [github.com/rs/xhandler](https://github.com/rs
 ```go
 c := xhandler.Chain{}
 
-// Install the logger handler with default output on the console
-lh := xlog.NewHandler(xlog.LevelDebug)
-
-// Set some global env fields
 host, _ := os.Hostname()
-lh.SetFields(xlog.F{
-    "role": "my-service",
-    "host": host,
-})
+conf := xlog.Config{
+    // Log info level and higher
+    Level: xlog.LevelInfo,
+    // Set some global env fields
+    Fields: xlog.F{
+        "role": "my-service",
+        "host": host,
+    },
+    // Output everything on console
+    Output: xlog.NewOutputChannel(xlog.NewConsoleOutput()),
+}
 
-c.UseC(lh.HandlerC)
+// Install the logger handler
+c.UseC(xlog.NewHandler(conf))
 
-// Plug the xlog handler's input to Go's default logger
-log.SetOutput(lh.NewLogger())
+// Optionally plug the xlog handler's input to Go's default logger
+log.SetOutput(xlog.New(conf))
 
 // Install some provided extra handler to set some request's context fields.
 // Thanks to those handler, all our logs will come with some pre-populated fields.
@@ -79,23 +83,26 @@ By default, output is setup to output debug and info message on `STDOUT` and war
 XLog output can be customized using composable output handlers. Thanks to the [LevelOutput](https://godoc.org/github.com/rs/xlog#LevelOutput), [MultiOutput](https://godoc.org/github.com/rs/xlog#MultiOutput) and [FilterOutput](https://godoc.org/github.com/rs/xlog#FilterOutput), it is easy to route messages precisely.
 
 ```go
-lh = xlog.NewHandler(xlog.LevelDebug)
-lh.SetOutput(xlog.MultiOutput{
-    // Send all logs with field type=mymodule to a remote syslog
-    xlog.FilterOutput{
-        Cond: func(fields map[string]interface{}) bool {
-            return fields["type"] == "mymodule"
+conf := xlog.Config{
+    Output: xlog.NewOutputChannel(xlog.MultiOutput{
+        // Send all logs with field type=mymodule to a remote syslog
+        0: xlog.FilterOutput{
+            Cond: func(fields map[string]interface{}) bool {
+                return fields["type"] == "mymodule"
+            },
+            Output: xlog.NewSyslogOutput("tcp", "1.2.3.4:1234", "mymodule"),
         },
-        Output: xlog.NewSyslogOutput("tcp", "1.2.3.4:1234", "mymodule"),
-    },
-    // Setup different output per log level
-    xlog.LevelOutput{
-        // Send errors to the console
-        Error: xlog.NewConsoleOutput(),
-        // Send syslog output for error level
-        Info: xlog.NewSyslogOutput("", "", ""),
-    },
+        // Setup different output per log level
+        1: xlog.LevelOutput{
+            // Send errors to the console
+            Error: xlog.NewConsoleOutput(),
+            // Send syslog output for error level
+            Info: xlog.NewSyslogOutput("", "", ""),
+        },
+    }),
 })
+
+h = xlog.NewHandler(conf)
 ```
 
 ## Licenses

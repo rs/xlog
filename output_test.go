@@ -3,7 +3,10 @@ package xlog
 import (
 	"bytes"
 	"errors"
+	"log"
+	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -16,6 +19,28 @@ type testOutput struct {
 func (o *testOutput) Write(fields map[string]interface{}) (err error) {
 	o.last = fields
 	return o.err
+}
+
+func TestOutputChannel(t *testing.T) {
+	o := &testOutput{}
+	oc := NewOutputChannel(o)
+	defer oc.Close()
+	oc.input <- F{"foo": "bar"}
+	assert.Nil(t, o.last)
+	runtime.Gosched()
+	assert.Equal(t, F{"foo": "bar"}, F(o.last))
+
+	// Trigger error path
+	buf := bytes.NewBuffer(nil)
+	log.SetOutput(buf)
+	o.err = errors.New("some error")
+	oc.input <- F{"foo": "bar"}
+	// Wait for log output to go through
+	runtime.Gosched()
+	for i := 0; i < 10 && buf.Len() == 0; i++ {
+		time.Sleep(10 * time.Millisecond)
+	}
+	assert.Contains(t, buf.String(), "xlog: cannot write log message: some error")
 }
 
 func TestDiscard(t *testing.T) {

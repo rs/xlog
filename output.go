@@ -16,6 +16,45 @@ type Output interface {
 	Write(fields map[string]interface{}) error
 }
 
+type OutputChannel struct {
+	input chan map[string]interface{}
+	stop  chan struct{}
+}
+
+// NewOutputChannel creates a consumer channel for the given output
+func NewOutputChannel(o Output) *OutputChannel {
+	oc := &OutputChannel{
+		input: make(chan map[string]interface{}, 100),
+		stop:  make(chan struct{}),
+	}
+
+	go func() {
+		for {
+			select {
+			case msg := <-oc.input:
+				if err := o.Write(msg); err != nil {
+					log.Printf("xlog: cannot write log message: %v", err)
+				}
+			case <-oc.stop:
+				close(oc.stop)
+				return
+			}
+		}
+	}()
+
+	return oc
+}
+
+// Close closes the output channel
+func (oc *OutputChannel) Close() {
+	if oc.stop == nil {
+		return
+	}
+	oc.stop <- struct{}{}
+	<-oc.stop
+	oc.stop = nil
+}
+
 type discard struct{}
 
 func (o discard) Write(fields map[string]interface{}) (err error) {

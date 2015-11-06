@@ -1,34 +1,12 @@
 package xlog
 
 import (
-	"log"
 	"net"
 	"net/http"
-	"sync"
 
 	"github.com/rs/xhandler"
 	"golang.org/x/net/context"
 )
-
-// Handler injects a per request Logger in the net/context which can be retrived using xlog.FromContext(ctx)
-type Handler struct {
-	mu     sync.Mutex
-	level  Level
-	input  chan map[string]interface{}
-	output Output
-	stop   chan struct{}
-	fields map[string]interface{}
-}
-
-type key int
-
-const logKey key = 0
-
-var loggerPool = sync.Pool{
-	New: func() interface{} {
-		return &logger{}
-	},
-}
 
 // FromContext gets the logger out of the context.
 // If not logger is stored in the context, a NopLogger is returned
@@ -50,95 +28,21 @@ func NewContext(ctx context.Context, l Logger) context.Context {
 
 // NewHandler instanciates a new xlog.Handler.
 //
-// By default, the output is set to ConsoleOutput(os.Stderr), you may change that using SetOutput().
-// The logger go routine is started automatically. You may start/stop this go routine
-// using Start()/Stop() methods.
-func NewHandler(level Level) *Handler {
-	h := &Handler{
-		level:  level,
-		input:  make(chan map[string]interface{}, 100),
-		output: NewConsoleOutput(),
+// By default, the output is set to ConsoleOutput(os.Stderr).
+func NewHandler(c Config) func(xhandler.HandlerC) xhandler.HandlerC {
+	if c.Output == nil {
+		c.Output = NewOutputChannel(NewConsoleOutput())
 	}
-	h.Start()
-	return h
-}
-
-// SetFields sets fields to append to all messages.
-func (h *Handler) SetFields(f map[string]interface{}) {
-	h.fields = f
-}
-
-// SetOutput sets the output destination for the logs
-func (h *Handler) SetOutput(o Output) {
-	if h.stop != nil {
-		h.Stop()
-		defer h.Start()
-	}
-	h.output = o
-}
-
-// Start starts the logger go routine
-func (h *Handler) Start() {
-	h.mu.Lock()
-	if h.stop != nil {
-		// Already started
-		h.mu.Unlock()
-		return
-	}
-	h.stop = make(chan struct{})
-	output := h.output
-	h.mu.Unlock()
-	go func() {
-		for {
-			select {
-			case msg := <-h.input:
-				if err := output.Write(msg); err != nil {
-					log.Printf("xlog: cannot write log message: %v", err)
-				}
-			case <-h.stop:
-				close(h.stop)
-				return
+	return func(next xhandler.HandlerC) xhandler.HandlerC {
+		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			l := New(c)
+			ctx = NewContext(ctx, l)
+			next.ServeHTTPC(ctx, w, r)
+			if l, ok := l.(*logger); ok {
+				l.close()
 			}
-		}
-	}()
-}
-
-// Stop stops the logger go routine
-func (h *Handler) Stop() {
-	if h.stop == nil {
-		return
+		})
 	}
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.stop <- struct{}{}
-	<-h.stop
-	h.stop = nil
-}
-
-// NewLogger manually creates a logger.
-// This method should only be used out of a request. Use FromContext in request.
-func (h *Handler) NewLogger() Logger {
-	l := loggerPool.Get().(*logger)
-	l.level = h.level
-	l.output = h.input
-	for k, v := range h.fields {
-		l.SetField(k, v)
-	}
-	return l
-}
-
-// HandlerC returns a xhandler.HandlerC compatible handler
-func (h *Handler) HandlerC(next xhandler.HandlerC) xhandler.HandlerC {
-	return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		l := h.NewLogger()
-		ctx = NewContext(ctx, l)
-		next.ServeHTTPC(ctx, w, r)
-		if l, ok := l.(*logger); ok {
-			l.output = nil
-			l.fields = nil
-			loggerPool.Put(l)
-		}
-	})
 }
 
 // RemoteAddrHandler returns a handler setting the request's remote address as a field
