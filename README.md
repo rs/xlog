@@ -105,6 +105,12 @@ conf := xlog.Config{
 h = xlog.NewHandler(conf)
 ```
 
+## Third Party Extensions
+
+| Project | Author | Description |
+|---------|--------|-------------|
+| [gRPClog](https://github.com/clawio/grpcxlog) | [Hugo González Labrador](https://github.com/labkode) | An adapter to use xlog as the logger for grpclog
+
 ## Licenses
 
 All source code is licensed under the [MIT License](https://raw.github.com/rs/xlog/master/LICENSE).
