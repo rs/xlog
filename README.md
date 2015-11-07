@@ -123,6 +123,7 @@ h = xlog.NewHandler(conf)
 
 | Project | Author | Description |
 |---------|--------|-------------|
+| [xlog-nsq](https://github.com/rs/xlog-nsq) | [Olivier Poitrey](https://github.com/rs) | An xlog to [NSQ](http://nsq.io) output
 | [gRPClog](https://github.com/clawio/grpcxlog) | [Hugo González Labrador](https://github.com/labkode) | An adapter to use xlog as the logger for grpclog
 
 ## Licenses
