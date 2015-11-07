@@ -71,6 +71,9 @@ h := c.Handler(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWr
     // Output:
     // {
     //   "message": "Something happend",
+    //   "level": "info",
+    //   "file": "main.go:34",
+    //   "time": time.Time{...},
     //   "user": "current user id",
     //   "status": "ok",
     //   "ip": "1.2.3.4",
