@@ -2,7 +2,7 @@
 
 [![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/rs/xlog) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/rs/xlog/master/LICENSE) [![Build Status](https://travis-ci.org/rs/xlog.svg?branch=master)](https://travis-ci.org/rs/xlog) [![Coverage](http://gocover.io/_badge/github.com/rs/xlog)](http://gocover.io/github.com/rs/xlog)
 
-xlog is a logger coupled with HTTP net/context aware middleware.
+xlog is a logger for [net/context](https://godoc.org/golang.org/x/net/context) aware HTTP applications.
 
 Read more about xlog on [Dailymotion engineering blog](http://engineering.dailymotion.com/our-way-to-go/).
 
