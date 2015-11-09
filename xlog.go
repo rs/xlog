@@ -85,10 +85,6 @@ const (
 
 var now = time.Now
 
-type key int
-
-const logKey key = 0
-
 var loggerPool = sync.Pool{
 	New: func() interface{} {
 		return &logger{}

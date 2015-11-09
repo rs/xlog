@@ -8,6 +8,10 @@ import (
 	"golang.org/x/net/context"
 )
 
+type key int
+
+const logKey key = 0
+
 // FromContext gets the logger out of the context.
 // If not logger is stored in the context, a NopLogger is returned
 func FromContext(ctx context.Context) Logger {
