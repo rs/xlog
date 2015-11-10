@@ -147,7 +147,7 @@ func TestError(t *testing.T) {
 func TestErrorf(t *testing.T) {
 	o := testOutput{}
 	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
-	l.Errorf("test %d", 1, F{"foo": "bar"})
+	l.Errorf("test %d%v", 1, F{"foo": "bar"})
 	runtime.Gosched()
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar", "file": "xlog_test.go:150"}, o.last)
 }
@@ -172,7 +172,7 @@ func TestFatalf(t *testing.T) {
 	defer func() { exit1 = e }()
 	o := testOutput{}
 	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
-	l.Fatalf("test %d", 1, F{"foo": "bar"})
+	l.Fatalf("test %d%v", 1, F{"foo": "bar"})
 	runtime.Gosched()
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar", "file": "xlog_test.go:175"}, o.last)
 	assert.Equal(t, 1, exited)

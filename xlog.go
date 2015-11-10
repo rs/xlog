@@ -210,8 +210,18 @@ func (l *logger) Error(v ...interface{}) {
 }
 
 // Errorf implements Logger interface
+//
+// Go vet users: you may append %v at the end of you format when using xlog.F{} as a last
+// argument to workaround go vet false alarm.
 func (l *logger) Errorf(format string, v ...interface{}) {
 	f := extractFields(&v)
+	if f != nil {
+		// Let user add a %v at the end of the message when fields are passed to satisfy go vet
+		l := len(format)
+		if l > 2 && format[l-2] == '%' && format[l-1] == 'v' {
+			format = format[0 : l-2]
+		}
+	}
 	l.send(LevelError, 2, fmt.Sprintf(format, v...), f)
 }
 
@@ -223,8 +233,18 @@ func (l *logger) Fatal(v ...interface{}) {
 }
 
 // Fatalf implements Logger interface
+//
+// Go vet users: you may append %v at the end of you format when using xlog.F{} as a last
+// argument to workaround go vet false alarm.
 func (l *logger) Fatalf(format string, v ...interface{}) {
 	f := extractFields(&v)
+	if f != nil {
+		// Let user add a %v at the end of the message when fields are passed to satisfy go vet
+		l := len(format)
+		if l > 2 && format[l-2] == '%' && format[l-1] == 'v' {
+			format = format[0 : l-2]
+		}
+	}
 	l.send(LevelError, 2, fmt.Sprintf(format, v...), f)
 	exit1()
 }
