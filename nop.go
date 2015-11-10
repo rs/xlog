@@ -23,4 +23,12 @@ func (n nop) Error(v ...interface{}) {}
 
 func (n nop) Errorf(format string, v ...interface{}) {}
 
+func (n nop) Fatal(v ...interface{}) {
+	exit1()
+}
+
+func (n nop) Fatalf(format string, v ...interface{}) {
+	exit1()
+}
+
 func (n nop) Write(p []byte) (int, error) { return len(p), nil }

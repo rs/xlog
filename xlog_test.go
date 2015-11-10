@@ -152,11 +152,37 @@ func TestErrorf(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar", "file": "xlog_test.go:150"}, o.last)
 }
 
+func TestFatal(t *testing.T) {
+	e := exit1
+	exited := 0
+	exit1 = func() { exited++ }
+	defer func() { exit1 = e }()
+	o := testOutput{}
+	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l.Fatal("test", F{"foo": "bar"})
+	runtime.Gosched()
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test", "foo": "bar", "file": "xlog_test.go:162"}, o.last)
+	assert.Equal(t, 1, exited)
+}
+
+func TestFatalf(t *testing.T) {
+	e := exit1
+	exited := 0
+	exit1 = func() { exited++ }
+	defer func() { exit1 = e }()
+	o := testOutput{}
+	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l.Fatalf("test %d", 1, F{"foo": "bar"})
+	runtime.Gosched()
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar", "file": "xlog_test.go:175"}, o.last)
+	assert.Equal(t, 1, exited)
+}
+
 func TestWrite(t *testing.T) {
 	o := testOutput{}
 	xl := New(Config{Output: NewOutputChannel(&o)}).(*logger)
 	l := log.New(xl, "prefix ", 0)
 	l.Printf("test")
 	runtime.Gosched()
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "prefix test", "file": "xlog_test.go:159"}, o.last)
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "prefix test", "file": "xlog_test.go:185"}, o.last)
 }

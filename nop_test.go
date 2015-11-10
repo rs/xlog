@@ -13,5 +13,8 @@ func TestNopLogger(t *testing.T) {
 	NopLogger.Warnf("format")
 	NopLogger.Error()
 	NopLogger.Errorf("format")
+	exit1 = func() {}
+	NopLogger.Fatal()
+	NopLogger.Fatalf("format")
 	NopLogger.Write([]byte{})
 }

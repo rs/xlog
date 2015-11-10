@@ -15,6 +15,7 @@ package xlog // import "github.com/rs/xlog"
 import (
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"runtime"
 	"strings"
@@ -54,6 +55,12 @@ type Logger interface {
 	// Error logs an error message with format. If last parameter is a map[string]string,
 	// it's content is added as fields to the message.
 	Errorf(format string, v ...interface{})
+	// Fatal logs an error message followed by a call to os.Exit(1). If last parameter is a
+	// map[string]string, it's content is added as fields to the message.
+	Fatal(v ...interface{})
+	// Fatalf logs an error message with format followed by a call to ox.Exit(1). If last
+	// parameter is a map[string]string, it's content is added as fields to the message.
+	Fatalf(format string, v ...interface{})
 }
 
 // Config defines logger's config
@@ -84,6 +91,7 @@ const (
 )
 
 var now = time.Now
+var exit1 = func() { os.Exit(1) }
 
 var loggerPool = sync.Pool{
 	New: func() interface{} {
@@ -205,6 +213,20 @@ func (l *logger) Error(v ...interface{}) {
 func (l *logger) Errorf(format string, v ...interface{}) {
 	f := extractFields(&v)
 	l.send(LevelError, 2, fmt.Sprintf(format, v...), f)
+}
+
+// Fatal implements Logger interface
+func (l *logger) Fatal(v ...interface{}) {
+	f := extractFields(&v)
+	l.send(LevelError, 2, fmt.Sprint(v...), f)
+	exit1()
+}
+
+// Fatalf implements Logger interface
+func (l *logger) Fatalf(format string, v ...interface{}) {
+	f := extractFields(&v)
+	l.send(LevelError, 2, fmt.Sprintf(format, v...), f)
+	exit1()
 }
 
 // Write implements io.Writer interface
