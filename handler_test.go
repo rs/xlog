@@ -2,6 +2,7 @@ package xlog
 
 import (
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/rs/xhandler"
@@ -87,4 +88,20 @@ func TestRefererHandler(t *testing.T) {
 	}))
 	h = NewHandler(Config{})(h)
 	h.ServeHTTPC(context.Background(), nil, r)
+}
+
+func TestRequestIDHandler(t *testing.T) {
+	r := &http.Request{}
+	h := RequestIDHandler("id", "Request-Id")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
+		if id, ok := IDFromContext(ctx); assert.True(t, ok) {
+			assert.Equal(t, l.fields["id"], id)
+			assert.Len(t, id.String(), 16)
+			assert.Equal(t, id.String(), w.Header().Get("Request-Id"))
+		}
+		assert.Len(t, l.fields["id"], 12)
+	}))
+	h = NewHandler(Config{})(h)
+	w := httptest.NewRecorder()
+	h.ServeHTTPC(context.Background(), w, r)
 }

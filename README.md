@@ -51,6 +51,7 @@ log.SetOutput(xlog.New(conf))
 c.UseC(xlog.RemoteAddrHandler("ip"))
 c.UseC(xlog.UserAgentHandler("user-agent"))
 c.UseC(xlog.RefererHandler("referer"))
+c.UseC(xlog.RequestIDHandler("req_id", "Request-Id"))
 
 // Here is your final handler
 h := c.Handler(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
