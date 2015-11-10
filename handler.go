@@ -5,15 +5,13 @@ import (
 	"net/http"
 
 	"github.com/rs/xhandler"
+	"github.com/rs/xid"
 	"golang.org/x/net/context"
 )
 
 type key int
 
-const (
-	logKey key = iota
-	idKey
-)
+const logKey key = 0
 
 // FromContext gets the logger out of the context.
 // If not logger is stored in the context, a NopLogger is returned
@@ -31,12 +29,6 @@ func FromContext(ctx context.Context) Logger {
 // NewContext returns a copy of the parent context and associates it with passed logger.
 func NewContext(ctx context.Context, l Logger) context.Context {
 	return context.WithValue(ctx, logKey, l)
-}
-
-// IDFromContext returns a uniq id associated to the request if any
-func IDFromContext(ctx context.Context) (ID, bool) {
-	id, ok := ctx.Value(idKey).(ID)
-	return id, ok
 }
 
 // NewHandler instanciates a new xlog.Handler.
@@ -98,7 +90,7 @@ func RefererHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC 
 }
 
 // RequestIDHandler returns a handler setting a unique id to the request which can
-// be gathered using IDFromContext(). This generated id is added as a field to the
+// be gathered using xid.FromContext(ctx). This generated id is added as a field to the
 // logger and as a response header if the headerName is not an empty string.
 //
 // The generated id is a URL safe base64 encoded mongo object-id-like unique id.
@@ -108,10 +100,10 @@ func RefererHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC 
 func RequestIDHandler(name, headerName string) func(next xhandler.HandlerC) xhandler.HandlerC {
 	return func(next xhandler.HandlerC) xhandler.HandlerC {
 		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-			id, ok := IDFromContext(ctx)
+			id, ok := xid.FromContext(ctx)
 			if !ok {
-				id = NewID()
-				ctx = context.WithValue(ctx, idKey, id)
+				id = xid.New()
+				ctx = xid.NewContext(ctx, id)
 			}
 			if name != "" {
 				FromContext(ctx).SetField(name, id)
