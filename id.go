@@ -55,6 +55,14 @@ func readMachineID() []byte {
 }
 
 // NewID generates a variant of Mongo Object ID
+//
+// Features:
+//
+//   - Size: 12 bytes (96 bits), smaller than UUID, larger than snowflake
+//   - Base64 URL safe encoded by default (16 bytes storage when transported as printable string)
+//   - Non configured
+//   - Sortable time based
+//   - Unicity guaranted for 16,777,216 (24 bits) unique ids per second and per host
 func NewID() ID {
 	var id ID
 	// Timestamp, 4 bytes, big endian
