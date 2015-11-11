@@ -11,7 +11,16 @@ import (
 
 type key int
 
-const logKey key = 0
+const (
+	logKey key = iota
+	idKey
+)
+
+// IDFromContext returns a uniq id associated to the request if any
+func IDFromContext(ctx context.Context) (xid.ID, bool) {
+	id, ok := ctx.Value(idKey).(xid.ID)
+	return id, ok
+}
 
 // FromContext gets the logger out of the context.
 // If not logger is stored in the context, a NopLogger is returned
@@ -90,7 +99,7 @@ func RefererHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC 
 }
 
 // RequestIDHandler returns a handler setting a unique id to the request which can
-// be gathered using xid.FromContext(ctx). This generated id is added as a field to the
+// be gathered using IDFromContext(ctx). This generated id is added as a field to the
 // logger and as a response header if the headerName is not an empty string.
 //
 // The generated id is a URL safe base64 encoded mongo object-id-like unique id.
@@ -100,10 +109,10 @@ func RefererHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC 
 func RequestIDHandler(name, headerName string) func(next xhandler.HandlerC) xhandler.HandlerC {
 	return func(next xhandler.HandlerC) xhandler.HandlerC {
 		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-			id, ok := xid.FromContext(ctx)
+			id, ok := IDFromContext(ctx)
 			if !ok {
 				id = xid.New()
-				ctx = xid.NewContext(ctx, id)
+				ctx = context.WithValue(ctx, idKey, id)
 			}
 			if name != "" {
 				FromContext(ctx).SetField(name, id)

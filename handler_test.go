@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/rs/xhandler"
-	"github.com/rs/xid"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
@@ -95,7 +94,7 @@ func TestRequestIDHandler(t *testing.T) {
 	r := &http.Request{}
 	h := RequestIDHandler("id", "Request-Id")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		l := FromContext(ctx).(*logger)
-		if id, ok := xid.FromContext(ctx); assert.True(t, ok) {
+		if id, ok := IDFromContext(ctx); assert.True(t, ok) {
 			assert.Equal(t, l.fields["id"], id)
 			assert.Len(t, id.String(), 16)
 			assert.Equal(t, id.String(), w.Header().Get("Request-Id"))
