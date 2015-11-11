@@ -185,3 +185,12 @@ func TestJSONOutput(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "{\"foo\":\"bar\",\"level\":\"info\",\"message\":\"some message\"}\n", buf.String())
 }
+
+func TestUIDOutput(t *testing.T) {
+	o := &testOutput{}
+	i := NewUIDOutput("id", o)
+	err := i.Write(F{"message": "some message", "level": "info", "foo": "bar"})
+	assert.NoError(t, err)
+	assert.NotNil(t, o.last["id"])
+	assert.Len(t, o.last["id"], 16)
+}

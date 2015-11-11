@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/rs/xid"
 )
 
 // Output sends a log message fields to its destination
@@ -232,4 +234,22 @@ func (o JSONOutput) Write(fields map[string]interface{}) error {
 		return err
 	}
 	return nil
+}
+
+// UIDOutput adds a unique id field to all message transiting thru this output filter.
+type UIDOutput struct {
+	f string
+	o Output
+}
+
+func (o UIDOutput) Write(fields map[string]interface{}) error {
+	fields[o.f] = xid.New().String()
+	return o.o.Write(fields)
+}
+
+// NewUIDOutput returns an output filter adding a globally unique id (using github.com/rs/xid)
+// to all message going thru this output. The o parameter defines the next output to pass data
+// to.
+func NewUIDOutput(field string, o Output) Output {
+	return &UIDOutput{f: field, o: o}
 }
