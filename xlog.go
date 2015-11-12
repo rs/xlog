@@ -31,7 +31,7 @@ import (
 	"time"
 )
 
-// Logger is per request logger interface
+// Logger defines the interface for a xlog compatible logger
 type Logger interface {
 	// Implements io.Writer so it can be set a output of log.Logger
 	io.Writer
@@ -71,17 +71,17 @@ type Logger interface {
 	Fatalf(format string, v ...interface{})
 }
 
-// Config defines logger's config
+// Config defines logger's configuration
 type Config struct {
-	// Level is the maximum level to output, logs with lower level are discarded
+	// Level is the maximum level to output, logs with lower level are discarded.
 	Level Level
-	// Fields defines default fields to use with all messages
+	// Fields defines default fields to use with all messages.
 	Fields map[string]interface{}
-	// Output is the channel to use to write log messages to
+	// Output is the channel to use to write log messages to.
 	Output *OutputChannel
 }
 
-// F represents a set of log message fields string -> interface{}
+// F represents a set of log message fields
 type F map[string]interface{}
 
 type logger struct {
@@ -90,7 +90,7 @@ type logger struct {
 	fields map[string]interface{}
 }
 
-// Common key names for log messages
+// Common field names for log messages.
 const (
 	KeyTime    = "time"
 	KeyMessage = "message"

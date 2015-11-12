@@ -17,21 +17,29 @@ import (
 	"github.com/rs/xlog/internal/term"
 )
 
-// Output sends a log message fields to its destination
+// Output sends a log message fields to a destination.
 type Output interface {
 	Write(fields map[string]interface{}) error
 }
 
-// OutputChannel is a send channel between xlog and an Output
+// OutputChannel is a send channel between xlog and an Output.
 type OutputChannel struct {
 	input chan map[string]interface{}
 	stop  chan struct{}
 }
 
-// NewOutputChannel creates a consumer channel for the given output
+// NewOutputChannel creates a consumer buffered channel for the given output
+// with a default buffer of 100 messages.
 func NewOutputChannel(o Output) *OutputChannel {
+	return NewOutputChannelBuffer(o, 100)
+}
+
+// NewOutputChannelBuffer creates a consumer buffered channel for the given output
+// with a customizable buffer size.
+func NewOutputChannelBuffer(o Output, bufSize int) *OutputChannel {
+
 	oc := &OutputChannel{
-		input: make(chan map[string]interface{}, 100),
+		input: make(chan map[string]interface{}, bufSize),
 		stop:  make(chan struct{}),
 	}
 
@@ -52,7 +60,7 @@ func NewOutputChannel(o Output) *OutputChannel {
 	return oc
 }
 
-// Close closes the output channel
+// Close closes the output channel and release the consumer's go routine.
 func (oc *OutputChannel) Close() {
 	if oc.stop == nil {
 		return
@@ -68,7 +76,7 @@ func (o discard) Write(fields map[string]interface{}) (err error) {
 	return nil
 }
 
-// Discard discards log output
+// Discard is an Output that discards all log message going thru it.
 var Discard = &discard{}
 
 var bufPool = &sync.Pool{
@@ -78,7 +86,7 @@ var bufPool = &sync.Pool{
 }
 
 // MultiOutput routes the same message to serveral outputs.
-// If one or more outputs return error, the last error is returned.
+// If one or more outputs return an error, the last error is returned.
 type MultiOutput []Output
 
 func (m MultiOutput) Write(fields map[string]interface{}) (err error) {
@@ -92,7 +100,7 @@ func (m MultiOutput) Write(fields map[string]interface{}) (err error) {
 }
 
 // FilterOutput test a condition on the message and forward it to the child output
-// if it returns true
+// if it returns true.
 type FilterOutput struct {
 	Cond   func(fields map[string]interface{}) bool
 	Output Output
@@ -108,7 +116,7 @@ func (f FilterOutput) Write(fields map[string]interface{}) (err error) {
 	return
 }
 
-// LevelOutput routes messages per level outputs
+// LevelOutput routes messages to different output based on the message's level.
 type LevelOutput struct {
 	Debug Output
 	Info  Output
@@ -155,6 +163,7 @@ func NewSyslogOutputFacility(network, address, tag string, facility syslog.Prior
 }
 
 // NewSyslogWriter returns a writer ready to be used with output modules.
+// If network and address are empty, Dial will connect to the local syslog server.
 func NewSyslogWriter(network, address string, prio syslog.Priority, tag string) io.Writer {
 	s, err := syslog.Dial(network, address, prio, tag)
 	if err != nil {
@@ -169,7 +178,7 @@ type consoleOutput struct {
 
 var isTerminal = term.IsTerminal
 
-// NewConsoleOutput returns a Output printing message in a human readable form on the
+// NewConsoleOutput returns a Output printing message in a colored human readable form on the
 // stdout.
 func NewConsoleOutput() Output {
 	if isTerminal(os.Stdout) {
@@ -233,7 +242,7 @@ type logfmtOutput struct {
 	w io.Writer
 }
 
-// NewLogfmtOutput returns a new output using
+// NewLogfmtOutput returns a new output using logstash JSON schema v1
 func NewLogfmtOutput(w io.Writer) Output {
 	return logfmtOutput{w: w}
 }
@@ -278,7 +287,7 @@ type jsonOutput struct {
 	w io.Writer
 }
 
-// NewJSONOutput returns a new JSON output with the given writer
+// NewJSONOutput returns a new JSON output with the given writer.
 func NewJSONOutput(w io.Writer) Output {
 	return jsonOutput{w: w}
 }
@@ -303,7 +312,7 @@ type logstashOutput struct {
 	w io.Writer
 }
 
-// NewLogstashOutput returns an output to generate logstash friendly JSON format
+// NewLogstashOutput returns an output to generate logstash friendly JSON format.
 func NewLogstashOutput(w io.Writer) Output {
 	return logstashOutput{w: w}
 }

@@ -16,14 +16,14 @@ const (
 	idKey
 )
 
-// IDFromContext returns a uniq id associated to the request if any
+// IDFromContext returns the unique id associated to the request if any.
 func IDFromContext(ctx context.Context) (xid.ID, bool) {
 	id, ok := ctx.Value(idKey).(xid.ID)
 	return id, ok
 }
 
 // FromContext gets the logger out of the context.
-// If not logger is stored in the context, a NopLogger is returned
+// If not logger is stored in the context, a NopLogger is returned.
 func FromContext(ctx context.Context) Logger {
 	if ctx == nil {
 		return NopLogger
@@ -35,14 +35,14 @@ func FromContext(ctx context.Context) Logger {
 	return l
 }
 
-// NewContext returns a copy of the parent context and associates it with passed logger.
+// NewContext returns a copy of the parent context and associates it with the provided logger.
 func NewContext(ctx context.Context, l Logger) context.Context {
 	return context.WithValue(ctx, logKey, l)
 }
 
-// NewHandler instanciates a new xlog.Handler.
+// NewHandler instanciates a new xlog HTTP handler.
 //
-// By default, the output is set to ConsoleOutput(os.Stderr).
+// If not configured, the output is set to NewConsoleOutput() by default.
 func NewHandler(c Config) func(xhandler.HandlerC) xhandler.HandlerC {
 	if c.Output == nil {
 		c.Output = NewOutputChannel(NewConsoleOutput())
@@ -60,7 +60,7 @@ func NewHandler(c Config) func(xhandler.HandlerC) xhandler.HandlerC {
 }
 
 // RemoteAddrHandler returns a handler setting the request's remote address as a field
-// to the current context's logger.
+// to the current context's logger using the passed name as field name.
 func RemoteAddrHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC {
 	return func(next xhandler.HandlerC) xhandler.HandlerC {
 		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -73,7 +73,7 @@ func RemoteAddrHandler(name string) func(next xhandler.HandlerC) xhandler.Handle
 }
 
 // UserAgentHandler returns a handler setting the request's client's user-agent as
-// a field to the current context's logger.
+// a field to the current context's logger using the passed name as field name.
 func UserAgentHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC {
 	return func(next xhandler.HandlerC) xhandler.HandlerC {
 		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -86,7 +86,7 @@ func UserAgentHandler(name string) func(next xhandler.HandlerC) xhandler.Handler
 }
 
 // RefererHandler returns a handler setting the request's referer header as
-// a field to the current context's logger.
+// a field to the current context's logger using the passed name as field name.
 func RefererHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC {
 	return func(next xhandler.HandlerC) xhandler.HandlerC {
 		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
@@ -100,7 +100,8 @@ func RefererHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC 
 
 // RequestIDHandler returns a handler setting a unique id to the request which can
 // be gathered using IDFromContext(ctx). This generated id is added as a field to the
-// logger and as a response header if the headerName is not an empty string.
+// logger using the passed name as field name. The id is also added as a response
+// header if the headerName is not empty.
 //
 // The generated id is a URL safe base64 encoded mongo object-id-like unique id.
 // Mongo unique id generation algorithm has been selected as a trade-off between
