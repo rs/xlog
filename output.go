@@ -166,17 +166,17 @@ func newJSONSyslogOutput(network, address string, prio syslog.Priority, tag stri
 	return NewJSONOutput(s), nil
 }
 
-// ConsoleOutput writes the message key if present followed by other fields in a
+// consoleOutput writes the message key if present followed by other fields in a
 // given io.Writer.
-type ConsoleOutput struct {
+type consoleOutput struct {
 	w io.Writer
 }
 
 // NewConsoleOutput returns ConsoleOutputs in a LevelOutput with error levels on os.Stderr
 // and other on os.Stdin
 func NewConsoleOutput() Output {
-	o := ConsoleOutput{w: os.Stdout}
-	e := ConsoleOutput{w: os.Stderr}
+	o := consoleOutput{w: os.Stdout}
+	e := consoleOutput{w: os.Stderr}
 	return LevelOutput{
 		Debug: o,
 		Info:  o,
@@ -185,7 +185,7 @@ func NewConsoleOutput() Output {
 	}
 }
 
-func (o ConsoleOutput) Write(fields map[string]interface{}) error {
+func (o consoleOutput) Write(fields map[string]interface{}) error {
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
@@ -208,17 +208,17 @@ func (o ConsoleOutput) Write(fields map[string]interface{}) error {
 	return nil
 }
 
-// JSONOutput marshals message fields and write the result on an io.Writer
-type JSONOutput struct {
+// jsonOutput marshals message fields and write the result on an io.Writer
+type jsonOutput struct {
 	w io.Writer
 }
 
 // NewJSONOutput returns a new JSONOutput with the given writer
 func NewJSONOutput(w io.Writer) Output {
-	return JSONOutput{w: w}
+	return jsonOutput{w: w}
 }
 
-func (o JSONOutput) Write(fields map[string]interface{}) error {
+func (o jsonOutput) Write(fields map[string]interface{}) error {
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
@@ -236,13 +236,13 @@ func (o JSONOutput) Write(fields map[string]interface{}) error {
 	return nil
 }
 
-// UIDOutput adds a unique id field to all message transiting thru this output filter.
-type UIDOutput struct {
+// uidOutput adds a unique id field to all message transiting thru this output filter.
+type uidOutput struct {
 	f string
 	o Output
 }
 
-func (o UIDOutput) Write(fields map[string]interface{}) error {
+func (o uidOutput) Write(fields map[string]interface{}) error {
 	fields[o.f] = xid.New().String()
 	return o.o.Write(fields)
 }
@@ -251,5 +251,5 @@ func (o UIDOutput) Write(fields map[string]interface{}) error {
 // to all message going thru this output. The o parameter defines the next output to pass data
 // to.
 func NewUIDOutput(field string, o Output) Output {
-	return &UIDOutput{f: field, o: o}
+	return &uidOutput{f: field, o: o}
 }

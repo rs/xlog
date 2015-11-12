@@ -164,15 +164,15 @@ func TestNewConsoleOutput(t *testing.T) {
 	c := NewConsoleOutput()
 	assert.IsType(t, LevelOutput{}, c)
 	l := c.(LevelOutput)
-	assert.IsType(t, ConsoleOutput{}, l.Debug)
-	assert.IsType(t, ConsoleOutput{}, l.Info)
-	assert.IsType(t, ConsoleOutput{}, l.Warn)
-	assert.IsType(t, ConsoleOutput{}, l.Error)
+	assert.IsType(t, consoleOutput{}, l.Debug)
+	assert.IsType(t, consoleOutput{}, l.Info)
+	assert.IsType(t, consoleOutput{}, l.Warn)
+	assert.IsType(t, consoleOutput{}, l.Error)
 }
 
 func TestConsoleOutput(t *testing.T) {
 	buf := &bytes.Buffer{}
-	c := ConsoleOutput{w: buf}
+	c := consoleOutput{w: buf}
 	err := c.Write(F{"message": "some message", "level": "info", "foo": "bar"})
 	assert.NoError(t, err)
 	assert.Equal(t, "some message {\"foo\":\"bar\",\"level\":\"info\"}\n", buf.String())
