@@ -27,6 +27,7 @@ func Example_handler() {
 	c.UseC(xlog.NewHandler(conf))
 
 	// Plug the xlog handler's input to Go's default logger
+	log.SetFlags(0)
 	log.SetOutput(xlog.New(conf))
 
 	// Install some provided extra handler to set some request's context fields.
@@ -56,6 +57,7 @@ func Example_handler() {
 	http.Handle("/", h)
 
 	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.SetOutput(os.Stderr) // make sure we print to console
 		log.Fatal(err)
 	}
 }
