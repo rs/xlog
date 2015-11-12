@@ -11,12 +11,15 @@ Read more about xlog on [Dailymotion engineering blog](http://engineering.dailym
 - Per request log context
 - Per request and/or per message key/value fields
 - Log levels (Debug, Info, Warn, Error)
-- Custom output
-- Automatically gathers request context like User-Agent, IP etc.
+- Color output when terminal is detected
+- Custom output (JSON, [logfmt](https://github.com/kr/logfmt), …)
+- Automatic gathering of request context like User-Agent, IP etc.
 - Drops message rather than blocking execution
 - Easy access logging thru [github.com/rs/xaccess](https://github.com/rs/xaccess)
 
 It works best in combination with [github.com/rs/xhandler](https://github.com/rs/xhandler).
+
+![](screenshot.png)
 
 ## Install
 
