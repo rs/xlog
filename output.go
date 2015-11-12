@@ -8,6 +8,7 @@ import (
 	"log"
 	"log/syslog"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -178,14 +179,16 @@ const (
 )
 
 type consoleOutput struct {
-	w     io.Writer
-	color bool
+	w io.Writer
 }
 
 // NewConsoleOutput returns a Output printing message in a human readable form on the
 // stdout.
 func NewConsoleOutput() Output {
-	return consoleOutput{w: os.Stdout, color: term.IsTerminal(os.Stdout)}
+	if term.IsTerminal(os.Stdout) {
+		return consoleOutput{w: os.Stdout}
+	}
+	return NewLogfmtOutput(os.Stdout)
 }
 
 func (o consoleOutput) Write(fields map[string]interface{}) error {
@@ -207,22 +210,30 @@ func (o consoleOutput) Write(fields map[string]interface{}) error {
 		case "error":
 			levelColor = red
 		}
-		colorPrint(buf, strings.ToUpper(lvl[0:4]), levelColor, o.color)
+		colorPrint(buf, strings.ToUpper(lvl[0:4]), levelColor)
 		buf.WriteByte(' ')
 	}
 	if msg, ok := fields[KeyMessage].(string); ok {
 		msg = strings.Replace(msg, "\n", "\\n", -1)
 		buf.Write([]byte(msg))
 	}
-	for k, v := range fields {
+	// Gather field keys
+	keys := []string{}
+	for k := range fields {
 		switch k {
-		case KeyTime, KeyLevel, KeyMessage:
+		case KeyLevel, KeyMessage, KeyTime:
 			continue
 		}
+		keys = append(keys, k)
+	}
+	// Sort fields by key names
+	sort.Strings(keys)
+	// Print fields using logfmt format
+	for _, k := range keys {
 		buf.WriteByte(' ')
-		colorPrint(buf, k, green, o.color)
+		colorPrint(buf, k, green)
 		buf.WriteByte('=')
-		if err := writeValue(buf, v); err != nil {
+		if err := writeValue(buf, fields[k]); err != nil {
 			return err
 		}
 	}
@@ -231,15 +242,11 @@ func (o consoleOutput) Write(fields map[string]interface{}) error {
 	return err
 }
 
-func colorPrint(w io.Writer, s string, color int, enabled bool) {
-	if enabled {
-		//w.Write([]byte{0x1b, '[', byte('0' + color), 'm'})
-		fmt.Fprintf(w, "\x1b[%dm", color)
-		w.Write([]byte(s))
-		w.Write([]byte("\x1b[0m"))
-	} else {
-		w.Write([]byte(s))
-	}
+func colorPrint(w io.Writer, s string, color int) {
+	//w.Write([]byte{0x1b, '[', byte('0' + color), 'm'})
+	fmt.Fprintf(w, "\x1b[%dm", color)
+	w.Write([]byte(s))
+	w.Write([]byte("\x1b[0m"))
 }
 
 func needsQuotedValueRune(r rune) bool {
@@ -248,6 +255,8 @@ func needsQuotedValueRune(r rune) bool {
 
 func writeValue(w io.Writer, v interface{}) (err error) {
 	switch v := v.(type) {
+	case nil:
+		_, err = w.Write([]byte("null"))
 	case string:
 		if strings.IndexFunc(v, needsQuotedValueRune) != -1 {
 			var b []byte
@@ -268,12 +277,56 @@ func writeValue(w io.Writer, v interface{}) (err error) {
 	return
 }
 
-// jsonOutput marshals message fields and write the result on an io.Writer
+type logfmtOutput struct {
+	w io.Writer
+}
+
+// NewLogfmtOutput returns a new output using
+func NewLogfmtOutput(w io.Writer) Output {
+	return logfmtOutput{w: w}
+}
+
+func (o logfmtOutput) Write(fields map[string]interface{}) error {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+	// Gather field keys
+	keys := []string{}
+	for k := range fields {
+		switch k {
+		case KeyLevel, KeyMessage, KeyTime:
+			continue
+		}
+		keys = append(keys, k)
+	}
+	// Sort fields by key names
+	sort.Strings(keys)
+	// Prepend default fields in a specific order
+	keys = append([]string{KeyLevel, KeyMessage, KeyTime}, keys...)
+	l := len(keys)
+	for i, k := range keys {
+		buf.Write([]byte(k))
+		buf.WriteByte('=')
+		if err := writeValue(buf, fields[k]); err != nil {
+			return err
+		}
+		if i+1 < l {
+			buf.WriteByte(' ')
+		} else {
+			buf.WriteByte('\n')
+		}
+	}
+	_, err := o.w.Write(buf.Bytes())
+	return err
+}
+
 type jsonOutput struct {
 	w io.Writer
 }
 
-// NewJSONOutput returns a new JSONOutput with the given writer
+// NewJSONOutput returns a new JSON output with the given writer
 func NewJSONOutput(w io.Writer) Output {
 	return jsonOutput{w: w}
 }

@@ -171,23 +171,6 @@ func TestNewConsoleOutput(t *testing.T) {
 func TestConsoleOutput(t *testing.T) {
 	buf := &bytes.Buffer{}
 	c := consoleOutput{w: buf}
-	err := c.Write(F{
-		"time":    time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
-		"message": "some message",
-		"level":   "info",
-		"string":  "foo",
-		"null":    nil,
-		"quoted":  "needs \" quotes",
-		"err":     errors.New("error"),
-		"errq":    errors.New("error with \" quote"),
-	})
-	assert.NoError(t, err)
-	assert.Equal(t, "2000/01/02 03:04:05 INFO some message string=foo null=<nil> quoted=\"needs \\\" quotes\" err=error errq=\"error with \\\" quote\"\n", buf.String())
-}
-
-func TestConsoleColorOutput(t *testing.T) {
-	buf := &bytes.Buffer{}
-	c := consoleOutput{w: buf, color: true}
 	err := c.Write(F{"message": "some message", "level": "info", "foo": "bar"})
 	assert.NoError(t, err)
 	assert.Equal(t, "\x1b[34mINFO\x1b[0m some message \x1b[32mfoo\x1b[0m=bar\n", buf.String())
@@ -203,6 +186,23 @@ func TestConsoleColorOutput(t *testing.T) {
 	err = c.Write(F{"message": "some error", "level": "error"})
 	assert.NoError(t, err)
 	assert.Equal(t, "\x1b[31mERRO\x1b[0m some error\n", buf.String())
+}
+
+func TestLogfmtOutput(t *testing.T) {
+	buf := &bytes.Buffer{}
+	c := NewLogfmtOutput(buf)
+	err := c.Write(F{
+		"time":    time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
+		"message": "some message",
+		"level":   "info",
+		"string":  "foo",
+		"null":    nil,
+		"quoted":  "needs \" quotes",
+		"err":     errors.New("error"),
+		"errq":    errors.New("error with \" quote"),
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "level=info message=\"some message\" time=\"2000-01-02 03:04:05 +0000 UTC\" err=error errq=\"error with \\\" quote\" null=null quoted=\"needs \\\" quotes\" string=foo\n", buf.String())
 }
 
 func TestJSONOutput(t *testing.T) {
