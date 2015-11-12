@@ -145,29 +145,22 @@ func NewSyslogOutput(network, address, tag string) Output {
 // with the proper priority added to the passed facility.
 // If network and address are empty, Dial will connect to the local syslog server.
 func NewSyslogOutputFacility(network, address, tag string, facility syslog.Priority) Output {
-	var err error
-	o := LevelOutput{}
-	if o.Debug, err = newJSONSyslogOutput(network, address, facility|syslog.LOG_DEBUG, tag); err != nil {
-		log.Panicf("xlog: syslog error: %v", err)
-	}
-	if o.Info, err = newJSONSyslogOutput(network, address, facility|syslog.LOG_INFO, tag); err != nil {
-		log.Panicf("xlog: syslog error: %v", err)
-	}
-	if o.Warn, err = newJSONSyslogOutput(network, address, facility|syslog.LOG_WARNING, tag); err != nil {
-		log.Panicf("xlog: syslog error: %v", err)
-	}
-	if o.Error, err = newJSONSyslogOutput(network, address, facility|syslog.LOG_ERR, tag); err != nil {
-		log.Panicf("xlog: syslog error: %v", err)
+	o := LevelOutput{
+		Debug: NewJSONOutput(NewSyslogWriter(network, address, facility|syslog.LOG_DEBUG, tag)),
+		Info:  NewJSONOutput(NewSyslogWriter(network, address, facility|syslog.LOG_INFO, tag)),
+		Warn:  NewJSONOutput(NewSyslogWriter(network, address, facility|syslog.LOG_WARNING, tag)),
+		Error: NewJSONOutput(NewSyslogWriter(network, address, facility|syslog.LOG_ERR, tag)),
 	}
 	return o
 }
 
-func newJSONSyslogOutput(network, address string, prio syslog.Priority, tag string) (Output, error) {
+// NewSyslogWriter returns a writer ready to be used with output modules.
+func NewSyslogWriter(network, address string, prio syslog.Priority, tag string) io.Writer {
 	s, err := syslog.Dial(network, address, prio, tag)
 	if err != nil {
-		return nil, err
+		log.Panicf("xlog: syslog dial error: %v", err)
 	}
-	return NewJSONOutput(s), nil
+	return s
 }
 
 type consoleOutput struct {

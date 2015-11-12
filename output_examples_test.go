@@ -1,6 +1,10 @@
 package xlog_test
 
-import "github.com/rs/xlog"
+import (
+	"log/syslog"
+
+	"github.com/rs/xlog"
+)
 
 func Example_combinedOutputs() {
 	conf := xlog.Config{
@@ -71,6 +75,20 @@ func ExampleLevelOutput() {
 			// and error messages to syslog
 			Error: xlog.NewSyslogOutput("", "", ""),
 			// other levels are discarded
+		}),
+	}
+
+	lh := xlog.NewHandler(conf)
+	_ = lh
+}
+
+func ExampleNewSyslogWriter() {
+	conf := xlog.Config{
+		Output: xlog.NewOutputChannel(xlog.LevelOutput{
+			Debug: xlog.NewLogstashOutput(xlog.NewSyslogWriter("", "", syslog.LOG_LOCAL0|syslog.LOG_DEBUG, "")),
+			Info:  xlog.NewLogstashOutput(xlog.NewSyslogWriter("", "", syslog.LOG_LOCAL0|syslog.LOG_INFO, "")),
+			Warn:  xlog.NewLogstashOutput(xlog.NewSyslogWriter("", "", syslog.LOG_LOCAL0|syslog.LOG_WARNING, "")),
+			Error: xlog.NewLogstashOutput(xlog.NewSyslogWriter("", "", syslog.LOG_LOCAL0|syslog.LOG_ERR, "")),
 		}),
 	}
 
