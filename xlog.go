@@ -77,8 +77,11 @@ type Config struct {
 	Level Level
 	// Fields defines default fields to use with all messages.
 	Fields map[string]interface{}
-	// Output is the channel to use to write log messages to.
-	Output *OutputChannel
+	// Output to use to write log messages to.
+	//
+	// You should always wrap your output with an OutputChannel otherwise your
+	// logger will be connected to its output synchronously.
+	Output Output
 }
 
 // F represents a set of log message fields
@@ -86,7 +89,7 @@ type F map[string]interface{}
 
 type logger struct {
 	level  Level
-	output *OutputChannel
+	output Output
 	fields map[string]interface{}
 }
 
@@ -148,12 +151,7 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 	for k, v := range l.fields {
 		data[k] = v
 	}
-	select {
-	case l.output.input <- data:
-		// Sent with success
-	default:
-		// Channel is full, message dropped
-	}
+	l.output.Write(data)
 }
 
 func extractFields(v *[]interface{}) map[string]interface{} {

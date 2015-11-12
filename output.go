@@ -22,7 +22,7 @@ type Output interface {
 	Write(fields map[string]interface{}) error
 }
 
-// OutputChannel is a send channel between xlog and an Output.
+// OutputChannel is a send buffered channel between xlog and an Output.
 type OutputChannel struct {
 	input chan map[string]interface{}
 	stop  chan struct{}
@@ -37,7 +37,6 @@ func NewOutputChannel(o Output) *OutputChannel {
 // NewOutputChannelBuffer creates a consumer buffered channel for the given output
 // with a customizable buffer size.
 func NewOutputChannelBuffer(o Output, bufSize int) *OutputChannel {
-
 	oc := &OutputChannel{
 		input: make(chan map[string]interface{}, bufSize),
 		stop:  make(chan struct{}),
@@ -58,6 +57,17 @@ func NewOutputChannelBuffer(o Output, bufSize int) *OutputChannel {
 	}()
 
 	return oc
+}
+
+// Write implements the Output interface
+func (oc *OutputChannel) Write(fields map[string]interface{}) (err error) {
+	select {
+	case oc.input <- fields:
+		// Sent with success
+	default:
+		// Channel is full, message dropped
+	}
+	return nil
 }
 
 // Close closes the output channel and release the consumer's go routine.
