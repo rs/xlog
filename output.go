@@ -182,10 +182,12 @@ type consoleOutput struct {
 	w io.Writer
 }
 
+var isTerminal = term.IsTerminal
+
 // NewConsoleOutput returns a Output printing message in a human readable form on the
 // stdout.
 func NewConsoleOutput() Output {
-	if term.IsTerminal(os.Stdout) {
+	if isTerminal(os.Stdout) {
 		return consoleOutput{w: os.Stdout}
 	}
 	return NewLogfmtOutput(os.Stdout)
