@@ -2,6 +2,7 @@ package xlog_test
 
 import (
 	"errors"
+	"log"
 
 	"github.com/rs/xlog"
 	"golang.org/x/net/context"
@@ -22,4 +23,17 @@ func Example_log() {
 	l.Debugf("foo %s", "bar", xlog.F{
 		"field": "value",
 	})
+}
+
+func Example_stdlog() {
+	// Define logger conf
+	conf := xlog.Config{
+		Output: xlog.NewOutputChannel(xlog.NewConsoleOutput()),
+	}
+
+	// Remove timestamp and other decorations of the std logger
+	log.SetFlags(0)
+
+	// Plug a xlog instance to Go's std logger
+	log.SetOutput(xlog.New(conf))
 }

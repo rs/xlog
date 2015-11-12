@@ -61,13 +61,3 @@ func Example_handler() {
 		log.Fatal(err)
 	}
 }
-
-func Example_stdlog() {
-	// Define logger conf
-	conf := xlog.Config{
-		Output: xlog.NewOutputChannel(xlog.NewConsoleOutput()),
-	}
-
-	// Plug the xlog handler's input to Go's default logger
-	log.SetOutput(xlog.New(conf))
-}
