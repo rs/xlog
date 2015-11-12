@@ -8,6 +8,7 @@ import (
 	"log/syslog"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -296,6 +297,59 @@ func (o jsonOutput) Write(fields map[string]interface{}) error {
 		bufPool.Put(buf)
 	}()
 	b, err := json.Marshal(fields)
+	if err != nil {
+		return err
+	}
+	buf.Write(b)
+	buf.WriteByte('\n')
+	_, err = o.w.Write(buf.Bytes())
+	return err
+}
+
+type logstashOutput struct {
+	w io.Writer
+}
+
+// NewLogstashOutput returns an output to generate logstash friendly JSON format
+func NewLogstashOutput(w io.Writer) Output {
+	return logstashOutput{w: w}
+}
+
+func (o logstashOutput) Write(fields map[string]interface{}) error {
+	lsf := map[string]interface{}{
+		"@version": 1,
+	}
+	for k, v := range fields {
+		switch k {
+		case KeyTime:
+			k = "@timestamp"
+		case KeyLevel:
+			if s, ok := v.(string); ok {
+				v = strings.ToUpper(s)
+			}
+		case KeyFile:
+			if s, ok := v.(string); ok {
+				if i := strings.IndexByte(s, ':'); i != -1 {
+					if n, err := strconv.ParseInt(s[i+1:], 10, 32); err == nil {
+						lsf["line_number"] = n
+						k = "file"
+						v = s[:i]
+					}
+				}
+			}
+		}
+		if t, ok := v.(time.Time); ok {
+			lsf[k] = t.Format(time.RFC3339)
+		} else {
+			lsf[k] = v
+		}
+	}
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+	b, err := json.Marshal(lsf)
 	if err != nil {
 		return err
 	}
