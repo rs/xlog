@@ -3,14 +3,17 @@ package xlog
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"log/syslog"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/rs/xid"
+	"github.com/rs/xlog/internal/term"
 )
 
 // Output sends a log message fields to its destination
@@ -166,23 +169,23 @@ func newJSONSyslogOutput(network, address string, prio syslog.Priority, tag stri
 	return NewJSONOutput(s), nil
 }
 
-// consoleOutput writes the message key if present followed by other fields in a
-// given io.Writer.
+const (
+	red    = 31
+	green  = 32
+	yellow = 33
+	blue   = 34
+	gray   = 37
+)
+
 type consoleOutput struct {
-	w io.Writer
+	w     io.Writer
+	color bool
 }
 
-// NewConsoleOutput returns ConsoleOutputs in a LevelOutput with error levels on os.Stderr
-// and other on os.Stdin
+// NewConsoleOutput returns a Output printing message in a human readable form on the
+// stdout.
 func NewConsoleOutput() Output {
-	o := consoleOutput{w: os.Stdout}
-	e := consoleOutput{w: os.Stderr}
-	return LevelOutput{
-		Debug: o,
-		Info:  o,
-		Warn:  e,
-		Error: e,
-	}
+	return consoleOutput{w: os.Stdout, color: term.IsTerminal(os.Stdout)}
 }
 
 func (o consoleOutput) Write(fields map[string]interface{}) error {
@@ -191,21 +194,78 @@ func (o consoleOutput) Write(fields map[string]interface{}) error {
 		buf.Reset()
 		bufPool.Put(buf)
 	}()
+	if ts, ok := fields[KeyTime].(time.Time); ok {
+		buf.Write([]byte(ts.Format("2006/01/02 15:04:05 ")))
+	}
+	if lvl, ok := fields[KeyLevel].(string); ok {
+		levelColor := blue
+		switch lvl {
+		case "debug":
+			levelColor = gray
+		case "warn":
+			levelColor = yellow
+		case "error":
+			levelColor = red
+		}
+		colorPrint(buf, strings.ToUpper(lvl[0:4]), levelColor, o.color)
+		buf.WriteByte(' ')
+	}
 	if msg, ok := fields[KeyMessage].(string); ok {
-		delete(fields, KeyMessage)
 		msg = strings.Replace(msg, "\n", "\\n", -1)
-		buf.Write([]byte(msg + " "))
+		buf.Write([]byte(msg))
 	}
-	b, err := json.Marshal(fields)
-	if err != nil {
-		return err
+	for k, v := range fields {
+		switch k {
+		case KeyTime, KeyLevel, KeyMessage:
+			continue
+		}
+		buf.WriteByte(' ')
+		colorPrint(buf, k, green, o.color)
+		buf.WriteByte('=')
+		if err := writeValue(buf, v); err != nil {
+			return err
+		}
 	}
-	buf.Write(b)
 	buf.WriteByte('\n')
-	if _, err = o.w.Write(buf.Bytes()); err != nil {
-		return err
+	_, err := o.w.Write(buf.Bytes())
+	return err
+}
+
+func colorPrint(w io.Writer, s string, color int, enabled bool) {
+	if enabled {
+		//w.Write([]byte{0x1b, '[', byte('0' + color), 'm'})
+		fmt.Fprintf(w, "\x1b[%dm", color)
+		w.Write([]byte(s))
+		w.Write([]byte("\x1b[0m"))
+	} else {
+		w.Write([]byte(s))
 	}
-	return nil
+}
+
+func needsQuotedValueRune(r rune) bool {
+	return r <= ' ' || r == '=' || r == '"'
+}
+
+func writeValue(w io.Writer, v interface{}) (err error) {
+	switch v := v.(type) {
+	case string:
+		if strings.IndexFunc(v, needsQuotedValueRune) != -1 {
+			var b []byte
+			b, err = json.Marshal(v)
+			if err == nil {
+				w.Write(b)
+			}
+		} else {
+			_, err = w.Write([]byte(v))
+		}
+	case error:
+		s := v.Error()
+		err = writeValue(w, s)
+	default:
+		s := fmt.Sprint(v)
+		err = writeValue(w, s)
+	}
+	return
 }
 
 // jsonOutput marshals message fields and write the result on an io.Writer
@@ -230,10 +290,8 @@ func (o jsonOutput) Write(fields map[string]interface{}) error {
 	}
 	buf.Write(b)
 	buf.WriteByte('\n')
-	if _, err = o.w.Write(buf.Bytes()); err != nil {
-		return err
-	}
-	return nil
+	_, err = o.w.Write(buf.Bytes())
+	return err
 }
 
 // uidOutput adds a unique id field to all message transiting thru this output filter.

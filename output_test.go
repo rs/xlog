@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"log"
+	"os"
 	"runtime"
 	"testing"
 	"time"
@@ -162,20 +163,46 @@ func TestSyslogOutput(t *testing.T) {
 
 func TestNewConsoleOutput(t *testing.T) {
 	c := NewConsoleOutput()
-	assert.IsType(t, LevelOutput{}, c)
-	l := c.(LevelOutput)
-	assert.IsType(t, consoleOutput{}, l.Debug)
-	assert.IsType(t, consoleOutput{}, l.Info)
-	assert.IsType(t, consoleOutput{}, l.Warn)
-	assert.IsType(t, consoleOutput{}, l.Error)
+	if assert.IsType(t, consoleOutput{}, c) {
+		assert.Equal(t, os.Stdout, c.(consoleOutput).w)
+	}
 }
 
 func TestConsoleOutput(t *testing.T) {
 	buf := &bytes.Buffer{}
 	c := consoleOutput{w: buf}
+	err := c.Write(F{
+		"time":    time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
+		"message": "some message",
+		"level":   "info",
+		"string":  "foo",
+		"null":    nil,
+		"quoted":  "needs \" quotes",
+		"err":     errors.New("error"),
+		"errq":    errors.New("error with \" quote"),
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "2000/01/02 03:04:05 INFO some message string=foo null=<nil> quoted=\"needs \\\" quotes\" err=error errq=\"error with \\\" quote\"\n", buf.String())
+}
+
+func TestConsoleColorOutput(t *testing.T) {
+	buf := &bytes.Buffer{}
+	c := consoleOutput{w: buf, color: true}
 	err := c.Write(F{"message": "some message", "level": "info", "foo": "bar"})
 	assert.NoError(t, err)
-	assert.Equal(t, "some message {\"foo\":\"bar\",\"level\":\"info\"}\n", buf.String())
+	assert.Equal(t, "\x1b[34mINFO\x1b[0m some message \x1b[32mfoo\x1b[0m=bar\n", buf.String())
+	buf.Reset()
+	err = c.Write(F{"message": "some debug", "level": "debug"})
+	assert.NoError(t, err)
+	assert.Equal(t, "\x1b[37mDEBU\x1b[0m some debug\n", buf.String())
+	buf.Reset()
+	err = c.Write(F{"message": "some warning", "level": "warn"})
+	assert.NoError(t, err)
+	assert.Equal(t, "\x1b[33mWARN\x1b[0m some warning\n", buf.String())
+	buf.Reset()
+	err = c.Write(F{"message": "some error", "level": "error"})
+	assert.NoError(t, err)
+	assert.Equal(t, "\x1b[31mERRO\x1b[0m some error\n", buf.String())
 }
 
 func TestJSONOutput(t *testing.T) {
