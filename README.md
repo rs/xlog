@@ -6,6 +6,8 @@ xlog is a logger for [net/context](https://godoc.org/golang.org/x/net/context) a
 
 Read more about xlog on [Dailymotion engineering blog](http://engineering.dailymotion.com/our-way-to-go/).
 
+![](screenshot.png)
+
 ## Features
 
 - Per request log context
@@ -18,8 +20,6 @@ Read more about xlog on [Dailymotion engineering blog](http://engineering.dailym
 - Easy access logging thru [github.com/rs/xaccess](https://github.com/rs/xaccess)
 
 It works best in combination with [github.com/rs/xhandler](https://github.com/rs/xhandler).
-
-![](screenshot.png)
 
 ## Install
 
