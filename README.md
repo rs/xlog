@@ -125,6 +125,20 @@ conf := xlog.Config{
 h = xlog.NewHandler(conf)
 ```
 
+#### Built-in Output Modules
+
+| Name | Description |
+|------|-------------|
+| [MultiOutput](https://godoc.org/github.com/rs/xlog#MultiOutput) | Routes the same message to serveral outputs. If one or more outputs return error, the last error is returned.
+| [FilterOutput](https://godoc.org/github.com/rs/xlog#FilterOutput) | Tests a condition on the message and forward it to the child output if true.
+| [LevelOutput](https://godoc.org/github.com/rs/xlog#LevelOutput) | Routes messages per level outputs.
+| [ConsoleOutput](https://godoc.org/github.com/rs/xlog#NewConsoleOutput) | Prints messages in a human readable form on the stdout with color when supported. Fallback to logfmt output if the stdout isn't a terminal.
+| [JSONOutput](https://godoc.org/github.com/rs/xlog#NewJSONOutput) | Serialize messages in JSON.
+| [LogfmtOutput](https://godoc.org/github.com/rs/xlog#NewLogfmtOutput) | Serialize messages using Heroku like [logfmt](https://github.com/kr/logfmt).
+| [LogstashOutput](https://godoc.org/github.com/rs/xlog#NewLogstashOutput) | Serialize JSON message using Logstash 2.0 (schema v1) structured format.
+| [SyslogOutput](https://godoc.org/github.com/rs/xlog#NewSyslogOutput) | Send messages to syslog.
+| [UIDOutput](https://godoc.org/github.com/rs/xlog#NewUIDOutput) | Append a globally unique id to every message and forward it to the next output.
+
 ## Third Party Extensions
 
 | Project | Author | Description |
