@@ -131,7 +131,8 @@ h = xlog.NewHandler(conf)
 
 | Name | Description |
 |------|-------------|
-| [MultiOutput](https://godoc.org/github.com/rs/xlog#MultiOutput) | Routes the same message to serveral outputs. If one or more outputs return error, the last error is returned.
+| [OutputChannel](https://godoc.org/github.com/rs/xlog#OutputChannel) | Buffers messages before sending. This output should always be the output directly set to xlog's configuration.
+| [MultiOutput](https://godoc.org/github.com/rs/xlog#MultiOutput) | Routes the same message to several outputs. If one or more outputs return error, the last error is returned.
 | [FilterOutput](https://godoc.org/github.com/rs/xlog#FilterOutput) | Tests a condition on the message and forward it to the child output if true.
 | [LevelOutput](https://godoc.org/github.com/rs/xlog#LevelOutput) | Routes messages per level outputs.
 | [ConsoleOutput](https://godoc.org/github.com/rs/xlog#NewConsoleOutput) | Prints messages in a human readable form on the stdout with color when supported. Fallback to logfmt output if the stdout isn't a terminal.
