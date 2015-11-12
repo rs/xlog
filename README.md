@@ -2,9 +2,11 @@
 
 [![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/rs/xlog) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/rs/xlog/master/LICENSE) [![Build Status](https://travis-ci.org/rs/xlog.svg?branch=master)](https://travis-ci.org/rs/xlog) [![Coverage](http://gocover.io/_badge/github.com/rs/xlog)](http://gocover.io/github.com/rs/xlog)
 
-xlog is a logger for [net/context](https://godoc.org/golang.org/x/net/context) aware HTTP applications.
+`xlog` is a logger for [net/context](https://godoc.org/golang.org/x/net/context) aware HTTP applications.
 
-Read more about xlog on [Dailymotion engineering blog](http://engineering.dailymotion.com/our-way-to-go/).
+Unlike most loggers, `xlog` will never block your application because one its outputs is lagging. The log commands are connected to their outputs through a buffered channel and will prefer to discard messages if the buffer get full. All message formatting, serialization and transport happen in a dedicated go routine.
+
+Read more about `xlog` on [Dailymotion engineering blog](http://engineering.dailymotion.com/our-way-to-go/).
 
 ![](screenshot.png)
 

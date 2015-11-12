@@ -1,13 +1,21 @@
 // Package xlog is a logger coupled with HTTP net/context aware middleware.
 //
+// Unlike most loggers, xlog will never block your application because one its
+// outputs is lagging. The log commands are connected to their outputs through
+// a buffered channel and will prefer to discard messages if the buffer get full.
+// All message formatting, serialization and transport happen in a dedicated go
+// routine.
+//
 // Features:
 //
-//   - Per request log context
-//   - Per request and/or per message key/value fields
-//   - Log levels (Debug, Info, Warn, Error)
-//   - Custom output
-//   - Automatically gathers request context like User-Agent, IP etc.
-//   - Drops message rather than blocking execution
+//     - Per request log context
+//     - Per request and/or per message key/value fields
+//     - Log levels (Debug, Info, Warn, Error)
+//     - Color output when terminal is detected
+//     - Custom output (JSON, logfmt, …)
+//     - Automatic gathering of request context like User-Agent, IP etc.
+//     - Drops message rather than blocking execution
+//     - Easy access logging thru github.com/rs/xaccess
 //
 // It works best in combination with github.com/rs/xhandler.
 package xlog // import "github.com/rs/xlog"
