@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"log"
 	"os"
 	"runtime"
 	"testing"
@@ -34,7 +33,8 @@ func TestOutputChannel(t *testing.T) {
 
 	// Trigger error path
 	buf := bytes.NewBuffer(nil)
-	log.SetOutput(buf)
+	critialLogOutput = buf
+	defer func() { critialLogOutput = os.Stderr }()
 	o.err = errors.New("some error")
 	oc.input <- F{"foo": "bar"}
 	// Wait for log output to go through
@@ -155,11 +155,15 @@ func TestLevelOutput(t *testing.T) {
 }
 
 func TestSyslogOutput(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	critialLogOutput = buf
+	defer func() { critialLogOutput = os.Stderr }()
 	m := NewSyslogOutput("udp", "127.0.0.1:1234", "mytag")
 	assert.IsType(t, LevelOutput{}, m)
 	assert.Panics(t, func() {
 		NewSyslogOutput("tcp", "an invalid host name", "mytag")
 	})
+	assert.Equal(t, "xlog: syslog dial error: dial tcp: missing port in address an invalid host name", buf.String())
 }
 
 func TestNewConsoleOutput(t *testing.T) {

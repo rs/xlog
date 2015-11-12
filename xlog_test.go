@@ -1,7 +1,9 @@
 package xlog
 
 import (
+	"bytes"
 	"log"
+	"os"
 	"runtime"
 	"testing"
 	"time"
@@ -70,13 +72,16 @@ func TestSend(t *testing.T) {
 }
 
 func TestSendDrop(t *testing.T) {
-	oc := NewOutputChannel(&testOutput{})
-	oc.input = make(chan map[string]interface{}, 1)
+	buf := bytes.NewBuffer(nil)
+	critialLogOutput = buf
+	defer func() { critialLogOutput = os.Stderr }()
+	oc := NewOutputChannelBuffer(&testOutput{}, 1)
 	l := New(Config{Output: oc}).(*logger)
 	l.send(LevelDebug, 2, "test", F{"foo": "bar"})
 	l.send(LevelDebug, 2, "test", F{"foo": "bar"})
 	l.send(LevelDebug, 2, "test", F{"foo": "bar"})
 	assert.Len(t, oc.input, 1)
+	assert.Equal(t, "xlog: send error: buffer fullxlog: send error: buffer full", buf.String())
 }
 
 func TestWxtractFields(t *testing.T) {

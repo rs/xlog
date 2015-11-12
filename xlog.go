@@ -151,7 +151,9 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 	for k, v := range l.fields {
 		data[k] = v
 	}
-	l.output.Write(data)
+	if err := l.output.Write(data); err != nil {
+		fmt.Fprint(critialLogOutput, "xlog: send error: ", err.Error())
+	}
 }
 
 func extractFields(v *[]interface{}) map[string]interface{} {
