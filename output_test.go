@@ -180,9 +180,9 @@ func TestNewConsoleOutput(t *testing.T) {
 func TestConsoleOutput(t *testing.T) {
 	buf := &bytes.Buffer{}
 	c := consoleOutput{w: buf}
-	err := c.Write(F{"message": "some message", "level": "info", "foo": "bar"})
+	err := c.Write(F{"message": "some message", "level": "info", "time": time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC), "foo": "bar"})
 	assert.NoError(t, err)
-	assert.Equal(t, "\x1b[34mINFO\x1b[0m some message \x1b[32mfoo\x1b[0m=bar\n", buf.String())
+	assert.Equal(t, "2000/01/02 03:04:05 \x1b[34mINFO\x1b[0m some message \x1b[32mfoo\x1b[0m=bar\n", buf.String())
 	buf.Reset()
 	err = c.Write(F{"message": "some debug", "level": "debug"})
 	assert.NoError(t, err)
