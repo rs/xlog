@@ -3,7 +3,6 @@ package xlog
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"log/syslog"
@@ -170,14 +169,6 @@ func newJSONSyslogOutput(network, address string, prio syslog.Priority, tag stri
 	return NewJSONOutput(s), nil
 }
 
-const (
-	red    = 31
-	green  = 32
-	yellow = 33
-	blue   = 34
-	gray   = 37
-)
-
 type consoleOutput struct {
 	w io.Writer
 }
@@ -242,41 +233,6 @@ func (o consoleOutput) Write(fields map[string]interface{}) error {
 	buf.WriteByte('\n')
 	_, err := o.w.Write(buf.Bytes())
 	return err
-}
-
-func colorPrint(w io.Writer, s string, color int) {
-	//w.Write([]byte{0x1b, '[', byte('0' + color), 'm'})
-	fmt.Fprintf(w, "\x1b[%dm", color)
-	w.Write([]byte(s))
-	w.Write([]byte("\x1b[0m"))
-}
-
-func needsQuotedValueRune(r rune) bool {
-	return r <= ' ' || r == '=' || r == '"'
-}
-
-func writeValue(w io.Writer, v interface{}) (err error) {
-	switch v := v.(type) {
-	case nil:
-		_, err = w.Write([]byte("null"))
-	case string:
-		if strings.IndexFunc(v, needsQuotedValueRune) != -1 {
-			var b []byte
-			b, err = json.Marshal(v)
-			if err == nil {
-				w.Write(b)
-			}
-		} else {
-			_, err = w.Write([]byte(v))
-		}
-	case error:
-		s := v.Error()
-		err = writeValue(w, s)
-	default:
-		s := fmt.Sprint(v)
-		err = writeValue(w, s)
-	}
-	return
 }
 
 type logfmtOutput struct {
