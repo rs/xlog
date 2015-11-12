@@ -106,6 +106,9 @@ func New(c Config) Logger {
 	l := loggerPool.Get().(*logger)
 	l.level = c.Level
 	l.output = c.Output
+	if l.output == nil {
+		l.output = NewOutputChannel(NewConsoleOutput())
+	}
 	for k, v := range c.Fields {
 		l.SetField(k, v)
 	}
