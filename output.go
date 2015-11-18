@@ -313,18 +313,11 @@ func NewJSONOutput(w io.Writer) Output {
 }
 
 func (o jsonOutput) Write(fields map[string]interface{}) error {
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer func() {
-		buf.Reset()
-		bufPool.Put(buf)
-	}()
 	b, err := json.Marshal(fields)
 	if err != nil {
 		return err
 	}
-	buf.Write(b)
-	buf.WriteByte('\n')
-	_, err = o.w.Write(buf.Bytes())
+	_, err = o.w.Write(b)
 	return err
 }
 
@@ -356,18 +349,11 @@ func (o logstashOutput) Write(fields map[string]interface{}) error {
 			lsf[k] = v
 		}
 	}
-	buf := bufPool.Get().(*bytes.Buffer)
-	defer func() {
-		buf.Reset()
-		bufPool.Put(buf)
-	}()
 	b, err := json.Marshal(lsf)
 	if err != nil {
 		return err
 	}
-	buf.Write(b)
-	buf.WriteByte('\n')
-	_, err = o.w.Write(buf.Bytes())
+	_, err = o.w.Write(b)
 	return err
 }
 

@@ -223,7 +223,7 @@ func TestJSONOutput(t *testing.T) {
 	j := NewJSONOutput(buf)
 	err := j.Write(F{"message": "some message", "level": "info", "foo": "bar"})
 	assert.NoError(t, err)
-	assert.Equal(t, "{\"foo\":\"bar\",\"level\":\"info\",\"message\":\"some message\"}\n", buf.String())
+	assert.Equal(t, "{\"foo\":\"bar\",\"level\":\"info\",\"message\":\"some message\"}", buf.String())
 }
 
 func TestLogstashOutput(t *testing.T) {
@@ -237,7 +237,7 @@ func TestLogstashOutput(t *testing.T) {
 		"foo":     "bar",
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, "{\"@timestamp\":\"2000-01-02T03:04:05Z\",\"@version\":1,\"file\":\"test.go:234\",\"foo\":\"bar\",\"level\":\"INFO\",\"message\":\"some message\"}\n", buf.String())
+	assert.Equal(t, "{\"@timestamp\":\"2000-01-02T03:04:05Z\",\"@version\":1,\"file\":\"test.go:234\",\"foo\":\"bar\",\"level\":\"INFO\",\"message\":\"some message\"}", buf.String())
 }
 
 func TestUIDOutput(t *testing.T) {
