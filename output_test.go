@@ -237,7 +237,7 @@ func TestLogstashOutput(t *testing.T) {
 		"foo":     "bar",
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, "{\"@timestamp\":\"2000-01-02T03:04:05Z\",\"@version\":1,\"file\":\"test.go\",\"foo\":\"bar\",\"level\":\"INFO\",\"line_number\":234,\"message\":\"some message\"}\n", buf.String())
+	assert.Equal(t, "{\"@timestamp\":\"2000-01-02T03:04:05Z\",\"@version\":1,\"file\":\"test.go:234\",\"foo\":\"bar\",\"level\":\"INFO\",\"message\":\"some message\"}\n", buf.String())
 }
 
 func TestUIDOutput(t *testing.T) {

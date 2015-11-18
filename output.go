@@ -9,7 +9,6 @@ import (
 	"log/syslog"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -349,16 +348,6 @@ func (o logstashOutput) Write(fields map[string]interface{}) error {
 		case KeyLevel:
 			if s, ok := v.(string); ok {
 				v = strings.ToUpper(s)
-			}
-		case KeyFile:
-			if s, ok := v.(string); ok {
-				if i := strings.IndexByte(s, ':'); i != -1 {
-					if n, err := strconv.ParseInt(s[i+1:], 10, 32); err == nil {
-						lsf["line_number"] = n
-						k = "file"
-						v = s[:i]
-					}
-				}
 			}
 		}
 		if t, ok := v.(time.Time); ok {
