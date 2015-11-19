@@ -51,6 +51,18 @@ func TestURLHandler(t *testing.T) {
 	h.ServeHTTPC(context.Background(), nil, r)
 }
 
+func TestMethodHandler(t *testing.T) {
+	r := &http.Request{
+		Method: "POST",
+	}
+	h := MethodHandler("method")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
+		assert.Equal(t, F{"method": "POST"}, F(l.fields))
+	}))
+	h = NewHandler(Config{})(h)
+	h.ServeHTTPC(context.Background(), nil, r)
+}
+
 func TestRemoteAddrHandler(t *testing.T) {
 	r := &http.Request{
 		RemoteAddr: "1.2.3.4:1234",
