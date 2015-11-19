@@ -54,6 +54,7 @@ log.SetOutput(xlog.New(conf))
 
 // Install some provided extra handler to set some request's context fields.
 // Thanks to those handler, all our logs will come with some pre-populated fields.
+c.UseC(xlog.URLHandler("url"))
 c.UseC(xlog.RemoteAddrHandler("ip"))
 c.UseC(xlog.UserAgentHandler("user_agent"))
 c.UseC(xlog.RefererHandler("referer"))

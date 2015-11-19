@@ -3,6 +3,7 @@ package xlog
 import (
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/rs/xhandler"
@@ -36,6 +37,18 @@ func TestNewHandler(t *testing.T) {
 		}
 	}))
 	h.ServeHTTPC(context.Background(), nil, nil)
+}
+
+func TestURLHandler(t *testing.T) {
+	r := &http.Request{
+		URL: &url.URL{Path: "/path", RawQuery: "foo=bar"},
+	}
+	h := URLHandler("url")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
+		assert.Equal(t, F{"url": "/path?foo=bar"}, F(l.fields))
+	}))
+	h = NewHandler(Config{})(h)
+	h.ServeHTTPC(context.Background(), nil, r)
 }
 
 func TestRemoteAddrHandler(t *testing.T) {
