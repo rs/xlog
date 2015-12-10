@@ -359,3 +359,16 @@ func NewUIDOutput(field string, o Output) Output {
 		return o.Write(fields)
 	})
 }
+
+// NewTrimOutput trims any field of type string with a value length greater than maxLen
+// to maxLen.
+func NewTrimOutput(maxLen int, o Output) Output {
+	return OutputFunc(func(fields map[string]interface{}) error {
+		for k, v := range fields {
+			if s, ok := v.(string); ok && len(s) > maxLen {
+				fields[k] = s[:maxLen]
+			}
+		}
+		return o.Write(fields)
+	})
+}

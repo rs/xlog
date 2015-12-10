@@ -248,3 +248,13 @@ func TestUIDOutput(t *testing.T) {
 	assert.NotNil(t, o.last["id"])
 	assert.Len(t, o.last["id"], 20)
 }
+
+func TestTrimOutput(t *testing.T) {
+	o := &testOutput{}
+	i := NewTrimOutput(10, o)
+	err := i.Write(F{"short": "short", "long": "too long message", "number": 20})
+	assert.NoError(t, err)
+	assert.Equal(t, "short", o.last["short"])
+	assert.Equal(t, "too long m", o.last["long"])
+	assert.Equal(t, 20, o.last["number"])
+}
