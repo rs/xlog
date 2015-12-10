@@ -121,7 +121,7 @@ func TestRequestIDHandler(t *testing.T) {
 		l := FromContext(ctx).(*logger)
 		if id, ok := IDFromContext(ctx); assert.True(t, ok) {
 			assert.Equal(t, l.fields["id"], id)
-			assert.Len(t, id.String(), 16)
+			assert.Len(t, id.String(), 20)
 			assert.Equal(t, id.String(), w.Header().Get("Request-Id"))
 		}
 		assert.Len(t, l.fields["id"], 12)

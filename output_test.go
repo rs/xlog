@@ -246,5 +246,5 @@ func TestUIDOutput(t *testing.T) {
 	err := i.Write(F{"message": "some message", "level": "info", "foo": "bar"})
 	assert.NoError(t, err)
 	assert.NotNil(t, o.last["id"])
-	assert.Len(t, o.last["id"], 16)
+	assert.Len(t, o.last["id"], 20)
 }
