@@ -22,6 +22,15 @@ type Output interface {
 	Write(fields map[string]interface{}) error
 }
 
+// OutputFunc is an adapter to allow the use of ordinary functions as Output handlers.
+// If it is a function with the appropriate signature, OutputFunc(f) is a Output object
+// that calls f on Write().
+type OutputFunc func(fields map[string]interface{}) error
+
+func (of OutputFunc) Write(fields map[string]interface{}) error {
+	return of(fields)
+}
+
 // OutputChannel is a send buffered channel between xlog and an Output.
 type OutputChannel struct {
 	input chan map[string]interface{}
@@ -88,14 +97,10 @@ func (oc *OutputChannel) Close() {
 	oc.stop = nil
 }
 
-type discard struct{}
-
-func (o discard) Write(fields map[string]interface{}) (err error) {
-	return nil
-}
-
 // Discard is an Output that discards all log message going thru it.
-var Discard = &discard{}
+var Discard = OutputFunc(func(fields map[string]interface{}) error {
+	return nil
+})
 
 var bufPool = &sync.Pool{
 	New: func() interface{} {
@@ -303,74 +308,54 @@ func (o logfmtOutput) Write(fields map[string]interface{}) error {
 	return err
 }
 
-type jsonOutput struct {
-	w io.Writer
-}
-
 // NewJSONOutput returns a new JSON output with the given writer.
 func NewJSONOutput(w io.Writer) Output {
-	return jsonOutput{w: w}
-}
-
-func (o jsonOutput) Write(fields map[string]interface{}) error {
-	b, err := json.Marshal(fields)
-	if err != nil {
+	return OutputFunc(func(fields map[string]interface{}) error {
+		b, err := json.Marshal(fields)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(b)
 		return err
-	}
-	_, err = o.w.Write(b)
-	return err
-}
-
-type logstashOutput struct {
-	w io.Writer
+	})
 }
 
 // NewLogstashOutput returns an output to generate logstash friendly JSON format.
 func NewLogstashOutput(w io.Writer) Output {
-	return logstashOutput{w: w}
-}
-
-func (o logstashOutput) Write(fields map[string]interface{}) error {
-	lsf := map[string]interface{}{
-		"@version": 1,
-	}
-	for k, v := range fields {
-		switch k {
-		case KeyTime:
-			k = "@timestamp"
-		case KeyLevel:
-			if s, ok := v.(string); ok {
-				v = strings.ToUpper(s)
+	return OutputFunc(func(fields map[string]interface{}) error {
+		lsf := map[string]interface{}{
+			"@version": 1,
+		}
+		for k, v := range fields {
+			switch k {
+			case KeyTime:
+				k = "@timestamp"
+			case KeyLevel:
+				if s, ok := v.(string); ok {
+					v = strings.ToUpper(s)
+				}
+			}
+			if t, ok := v.(time.Time); ok {
+				lsf[k] = t.Format(time.RFC3339)
+			} else {
+				lsf[k] = v
 			}
 		}
-		if t, ok := v.(time.Time); ok {
-			lsf[k] = t.Format(time.RFC3339)
-		} else {
-			lsf[k] = v
+		b, err := json.Marshal(lsf)
+		if err != nil {
+			return err
 		}
-	}
-	b, err := json.Marshal(lsf)
-	if err != nil {
+		_, err = w.Write(b)
 		return err
-	}
-	_, err = o.w.Write(b)
-	return err
-}
-
-// uidOutput adds a unique id field to all message transiting thru this output filter.
-type uidOutput struct {
-	f string
-	o Output
-}
-
-func (o uidOutput) Write(fields map[string]interface{}) error {
-	fields[o.f] = xid.New().String()
-	return o.o.Write(fields)
+	})
 }
 
 // NewUIDOutput returns an output filter adding a globally unique id (using github.com/rs/xid)
 // to all message going thru this output. The o parameter defines the next output to pass data
 // to.
 func NewUIDOutput(field string, o Output) Output {
-	return &uidOutput{f: field, o: o}
+	return OutputFunc(func(fields map[string]interface{}) error {
+		fields[field] = xid.New().String()
+		return o.Write(fields)
+	})
 }
