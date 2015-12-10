@@ -134,7 +134,7 @@ func (l *logger) close() {
 }
 
 func (l *logger) send(level Level, calldepth int, msg string, fields map[string]interface{}) {
-	if level < l.level {
+	if level < l.level || l.output == nil {
 		return
 	}
 	data := map[string]interface{}{
@@ -148,8 +148,10 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 	for k, v := range fields {
 		data[k] = v
 	}
-	for k, v := range l.fields {
-		data[k] = v
+	if l.fields != nil {
+		for k, v := range l.fields {
+			data[k] = v
+		}
 	}
 	if err := l.output.Write(data); err != nil {
 		fmt.Fprint(critialLogOutput, "xlog: send error: ", err.Error())
