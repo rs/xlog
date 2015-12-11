@@ -28,7 +28,7 @@ func Example_log() {
 func Example_stdlog() {
 	// Define logger conf
 	conf := xlog.Config{
-		Output: xlog.NewOutputChannel(xlog.NewConsoleOutput()),
+		Output: xlog.NewConsoleOutput(),
 	}
 
 	// Remove timestamp and other decorations of the std logger

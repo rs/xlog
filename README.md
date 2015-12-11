@@ -50,7 +50,8 @@ c.UseC(xlog.NewHandler(conf))
 
 // Optionally plug the xlog handler's input to Go's default logger
 log.SetFlags(0)
-log.SetOutput(xlog.New(conf))
+xlogger := xlog.New(conf)
+log.SetOutput(xlogger)
 
 // Install some provided extra handler to set some request's context fields.
 // Thanks to those handler, all our logs will come with some pre-populated fields.
@@ -95,8 +96,7 @@ h := c.Handler(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWr
 http.Handle("/", h)
 
 if err := http.ListenAndServe(":8080", nil); err != nil {
-    log.SetOutput(os.Stderr) // make sure we print to console
-    log.Fatal(err)
+    xlogger.Fatal(err)
 }
 ```
 
