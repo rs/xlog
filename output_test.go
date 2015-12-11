@@ -104,53 +104,75 @@ func TestFilterOutput(t *testing.T) {
 func TestLevelOutput(t *testing.T) {
 	oInfo := &testOutput{}
 	oError := &testOutput{}
+	oFatal := &testOutput{}
 	oWarn := &testOutput{err: errors.New("some error")}
 	l := LevelOutput{
 		Info:  oInfo,
 		Error: oError,
+		Fatal: oFatal,
 		Warn:  oWarn,
 	}
 
-	err := l.Write(F{"level": "error", "foo": "bar"})
+	err := l.Write(F{"level": "fatal", "foo": "bar"})
 	assert.NoError(t, err)
 	assert.Nil(t, oInfo.last)
-	assert.Equal(t, F{"level": "error", "foo": "bar"}, F(oError.last))
+	assert.Nil(t, oError.last)
+	assert.Equal(t, F{"level": "fatal", "foo": "bar"}, F(oFatal.last))
 	assert.Nil(t, oWarn.last)
 
 	oInfo.last = nil
 	oError.last = nil
+	oFatal.last = nil
+	oWarn.last = nil
+	err = l.Write(F{"level": "error", "foo": "bar"})
+	assert.NoError(t, err)
+	assert.Nil(t, oInfo.last)
+	assert.Equal(t, F{"level": "error", "foo": "bar"}, F(oError.last))
+	assert.Nil(t, oFatal.last)
+	assert.Nil(t, oWarn.last)
+
+	oInfo.last = nil
+	oError.last = nil
+	oFatal.last = nil
 	oWarn.last = nil
 	err = l.Write(F{"level": "info", "foo": "bar"})
 	assert.NoError(t, err)
 	assert.Equal(t, F{"level": "info", "foo": "bar"}, F(oInfo.last))
+	assert.Nil(t, oFatal.last)
 	assert.Nil(t, oError.last)
 	assert.Nil(t, oWarn.last)
 
 	oInfo.last = nil
 	oError.last = nil
+	oFatal.last = nil
 	oWarn.last = nil
 	err = l.Write(F{"level": "warn", "foo": "bar"})
 	assert.EqualError(t, err, "some error")
 	assert.Nil(t, oInfo.last)
 	assert.Nil(t, oError.last)
+	assert.Nil(t, oFatal.last)
 	assert.Equal(t, F{"level": "warn", "foo": "bar"}, F(oWarn.last))
 
 	oInfo.last = nil
 	oError.last = nil
+	oFatal.last = nil
 	oWarn.last = nil
 	err = l.Write(F{"level": "debug", "foo": "bar"})
 	assert.NoError(t, err)
 	assert.Nil(t, oInfo.last)
 	assert.Nil(t, oError.last)
+	assert.Nil(t, oFatal.last)
 	assert.Nil(t, oWarn.last)
 
 	oInfo.last = nil
 	oError.last = nil
+	oFatal.last = nil
 	oWarn.last = nil
 	err = l.Write(F{"foo": "bar"})
 	assert.NoError(t, err)
 	assert.Nil(t, oInfo.last)
 	assert.Nil(t, oError.last)
+	assert.Nil(t, oFatal.last)
 	assert.Nil(t, oWarn.last)
 }
 

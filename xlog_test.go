@@ -197,7 +197,7 @@ func TestFatal(t *testing.T) {
 	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test", "foo": "bar"}, o.last)
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test", "foo": "bar"}, o.last)
 	assert.Equal(t, 1, exited)
 }
 
@@ -212,7 +212,7 @@ func TestFatalf(t *testing.T) {
 	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar"}, o.last)
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test 1", "foo": "bar"}, o.last)
 	assert.Equal(t, 1, exited)
 }
 

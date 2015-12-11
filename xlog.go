@@ -241,7 +241,7 @@ func (l *logger) Errorf(format string, v ...interface{}) {
 // Fatal implements Logger interface
 func (l *logger) Fatal(v ...interface{}) {
 	f := extractFields(&v)
-	l.send(LevelError, 2, fmt.Sprint(v...), f)
+	l.send(LevelFatal, 2, fmt.Sprint(v...), f)
 	exit1()
 }
 
@@ -258,7 +258,7 @@ func (l *logger) Fatalf(format string, v ...interface{}) {
 			format = format[0 : l-2]
 		}
 	}
-	l.send(LevelError, 2, fmt.Sprintf(format, v...), f)
+	l.send(LevelFatal, 2, fmt.Sprintf(format, v...), f)
 	exit1()
 }
 

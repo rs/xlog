@@ -145,6 +145,7 @@ type LevelOutput struct {
 	Info  Output
 	Warn  Output
 	Error Output
+	Fatal Output
 }
 
 func (l LevelOutput) Write(fields map[string]interface{}) error {
@@ -158,6 +159,8 @@ func (l LevelOutput) Write(fields map[string]interface{}) error {
 		o = l.Warn
 	case "error":
 		o = l.Error
+	case "fatal":
+		o = l.Fatal
 	}
 	if o != nil {
 		return o.Write(fields)

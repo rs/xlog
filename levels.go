@@ -11,6 +11,7 @@ const (
 	LevelInfo
 	LevelWarn
 	LevelError
+	LevelFatal
 )
 
 // String returns the string representation of the level.
@@ -24,6 +25,8 @@ func (l Level) String() string {
 		return "warn"
 	case LevelError:
 		return "error"
+	case LevelFatal:
+		return "fatal"
 	default:
 		return strconv.FormatInt(int64(l), 10)
 	}
