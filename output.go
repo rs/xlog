@@ -33,8 +33,9 @@ func (of OutputFunc) Write(fields map[string]interface{}) error {
 
 // OutputChannel is a send buffered channel between xlog and an Output.
 type OutputChannel struct {
-	input chan map[string]interface{}
-	stop  chan struct{}
+	input  chan map[string]interface{}
+	output Output
+	stop   chan struct{}
 }
 
 // ErrBufferFull is returned when the output channel buffer is full and messages
@@ -54,8 +55,9 @@ func NewOutputChannel(o Output) *OutputChannel {
 // with a customizable buffer size.
 func NewOutputChannelBuffer(o Output, bufSize int) *OutputChannel {
 	oc := &OutputChannel{
-		input: make(chan map[string]interface{}, bufSize),
-		stop:  make(chan struct{}),
+		input:  make(chan map[string]interface{}, bufSize),
+		output: o,
+		stop:   make(chan struct{}),
 	}
 
 	go func() {
@@ -87,6 +89,20 @@ func (oc *OutputChannel) Write(fields map[string]interface{}) (err error) {
 	return err
 }
 
+// Flush flushes all the buffered message to the output
+func (oc *OutputChannel) Flush() {
+	for {
+		select {
+		case msg := <-oc.input:
+			if err := oc.output.Write(msg); err != nil {
+				fmt.Fprintf(critialLogOutput, "xlog: cannot write log message: %v", err)
+			}
+		default:
+			return
+		}
+	}
+}
+
 // Close closes the output channel and release the consumer's go routine.
 func (oc *OutputChannel) Close() {
 	if oc.stop == nil {
@@ -95,6 +111,7 @@ func (oc *OutputChannel) Close() {
 	oc.stop <- struct{}{}
 	<-oc.stop
 	oc.stop = nil
+	oc.Flush()
 }
 
 // Discard is an Output that discards all log message going thru it.

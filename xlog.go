@@ -242,6 +242,9 @@ func (l *logger) Errorf(format string, v ...interface{}) {
 func (l *logger) Fatal(v ...interface{}) {
 	f := extractFields(&v)
 	l.send(LevelFatal, 2, fmt.Sprint(v...), f)
+	if o, ok := l.output.(*OutputChannel); ok {
+		o.Close()
+	}
 	exit1()
 }
 
@@ -259,6 +262,9 @@ func (l *logger) Fatalf(format string, v ...interface{}) {
 		}
 	}
 	l.send(LevelFatal, 2, fmt.Sprintf(format, v...), f)
+	if o, ok := l.output.(*OutputChannel); ok {
+		o.Close()
+	}
 	exit1()
 }
 
@@ -266,5 +272,8 @@ func (l *logger) Fatalf(format string, v ...interface{}) {
 func (l *logger) Write(p []byte) (int, error) {
 	msg := strings.TrimRight(string(p), "\n")
 	l.send(LevelInfo, 4, msg, nil)
+	if o, ok := l.output.(*OutputChannel); ok {
+		o.Flush()
+	}
 	return len(p), nil
 }

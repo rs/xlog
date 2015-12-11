@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"log"
 	"os"
-	"runtime"
 	"testing"
 	"time"
 
@@ -49,25 +48,21 @@ func TestNewDefautOutput(t *testing.T) {
 
 func TestSend(t *testing.T) {
 	o := testOutput{}
-	oc := NewOutputChannel(&o)
-	l := New(Config{Output: oc}).(*logger)
+	l := New(Config{Output: &o}).(*logger)
 	l.send(LevelDebug, 1, "test", F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test", "foo": "bar"}, o.last)
 
 	l.SetField("bar", "baz")
 	l.send(LevelInfo, 1, "test", F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test", "foo": "bar", "bar": "baz"}, o.last)
 
-	l = New(Config{Output: oc, Level: 1}).(*logger)
+	l = New(Config{Output: &o, Level: 1}).(*logger)
 	o.last = nil
 	l.send(0, 2, "test", F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Nil(t, o.last)
 }
 
@@ -108,9 +103,8 @@ func TestWxtractFields(t *testing.T) {
 
 func TestDebug(t *testing.T) {
 	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l := New(Config{Output: &o}).(*logger)
 	l.Debug("test", F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test", "foo": "bar"}, o.last)
@@ -118,9 +112,8 @@ func TestDebug(t *testing.T) {
 
 func TestDebugf(t *testing.T) {
 	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l := New(Config{Output: &o}).(*logger)
 	l.Debugf("test %d", 1, F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test 1", "foo": "bar"}, o.last)
@@ -128,9 +121,8 @@ func TestDebugf(t *testing.T) {
 
 func TestInfo(t *testing.T) {
 	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l := New(Config{Output: &o}).(*logger)
 	l.Info("test", F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test", "foo": "bar"}, o.last)
@@ -138,9 +130,8 @@ func TestInfo(t *testing.T) {
 
 func TestInfof(t *testing.T) {
 	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l := New(Config{Output: &o}).(*logger)
 	l.Infof("test %d", 1, F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test 1", "foo": "bar"}, o.last)
@@ -148,9 +139,8 @@ func TestInfof(t *testing.T) {
 
 func TestWarn(t *testing.T) {
 	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l := New(Config{Output: &o}).(*logger)
 	l.Warn("test", F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "warn", "message": "test", "foo": "bar"}, o.last)
@@ -158,9 +148,8 @@ func TestWarn(t *testing.T) {
 
 func TestWarnf(t *testing.T) {
 	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l := New(Config{Output: &o}).(*logger)
 	l.Warnf("test %d", 1, F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "warn", "message": "test 1", "foo": "bar"}, o.last)
@@ -168,9 +157,8 @@ func TestWarnf(t *testing.T) {
 
 func TestError(t *testing.T) {
 	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l := New(Config{Output: &o}).(*logger)
 	l.Error("test", F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test", "foo": "bar"}, o.last)
@@ -178,9 +166,8 @@ func TestError(t *testing.T) {
 
 func TestErrorf(t *testing.T) {
 	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	l := New(Config{Output: &o}).(*logger)
 	l.Errorf("test %d%v", 1, F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar"}, o.last)
@@ -194,7 +181,6 @@ func TestFatal(t *testing.T) {
 	o := testOutput{}
 	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
 	l.Fatal("test", F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test", "foo": "bar"}, o.last)
@@ -209,7 +195,6 @@ func TestFatalf(t *testing.T) {
 	o := testOutput{}
 	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
 	l.Fatalf("test %d%v", 1, F{"foo": "bar"})
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test 1", "foo": "bar"}, o.last)
@@ -221,7 +206,6 @@ func TestWrite(t *testing.T) {
 	xl := New(Config{Output: NewOutputChannel(&o)}).(*logger)
 	l := log.New(xl, "prefix ", 0)
 	l.Printf("test")
-	runtime.Gosched()
 	assert.Contains(t, o.last["file"], "log_test.go:")
 	delete(o.last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "prefix test"}, o.last)
