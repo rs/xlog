@@ -3,6 +3,7 @@ package xlog
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -33,8 +34,11 @@ func TestOutputChannel(t *testing.T) {
 
 	// Trigger error path
 	buf := bytes.NewBuffer(nil)
-	critialLogOutput = buf
-	defer func() { critialLogOutput = os.Stderr }()
+	oldCritialLogger := critialLogger
+	defer func() { critialLogger = oldCritialLogger }()
+	critialLogger = func(v ...interface{}) {
+		fmt.Fprint(buf, v...)
+	}
 	o.err = errors.New("some error")
 	oc.input <- F{"foo": "bar"}
 	// Wait for log output to go through
@@ -42,7 +46,7 @@ func TestOutputChannel(t *testing.T) {
 	for i := 0; i < 10 && buf.Len() == 0; i++ {
 		time.Sleep(10 * time.Millisecond)
 	}
-	assert.Contains(t, buf.String(), "xlog: cannot write log message: some error")
+	assert.Contains(t, buf.String(), "cannot write log message: some error")
 }
 
 func TestOutputChannelClose(t *testing.T) {
@@ -178,14 +182,17 @@ func TestLevelOutput(t *testing.T) {
 
 func TestSyslogOutput(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	critialLogOutput = buf
-	defer func() { critialLogOutput = os.Stderr }()
+	oldCritialLogger := critialLogger
+	defer func() { critialLogger = oldCritialLogger }()
+	critialLogger = func(v ...interface{}) {
+		fmt.Fprint(buf, v...)
+	}
 	m := NewSyslogOutput("udp", "127.0.0.1:1234", "mytag")
 	assert.IsType(t, LevelOutput{}, m)
 	assert.Panics(t, func() {
 		NewSyslogOutput("tcp", "an invalid host name", "mytag")
 	})
-	assert.Equal(t, "xlog: syslog dial error: dial tcp: missing port in address an invalid host name", buf.String())
+	assert.Equal(t, "syslog dial error: dial tcp: missing port in address an invalid host name", buf.String())
 }
 
 func TestNewConsoleOutput(t *testing.T) {

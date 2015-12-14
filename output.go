@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/syslog"
 	"os"
@@ -42,9 +41,6 @@ type OutputChannel struct {
 // are discarded.
 var ErrBufferFull = errors.New("buffer full")
 
-// critialLogOutput is for output errors
-var critialLogOutput io.Writer = os.Stderr
-
 // NewOutputChannel creates a consumer buffered channel for the given output
 // with a default buffer of 100 messages.
 func NewOutputChannel(o Output) *OutputChannel {
@@ -65,7 +61,7 @@ func NewOutputChannelBuffer(o Output, bufSize int) *OutputChannel {
 			select {
 			case msg := <-oc.input:
 				if err := o.Write(msg); err != nil {
-					fmt.Fprintf(critialLogOutput, "xlog: cannot write log message: %v", err)
+					critialLogger("cannot write log message: ", err.Error())
 				}
 			case <-oc.stop:
 				close(oc.stop)
@@ -95,7 +91,7 @@ func (oc *OutputChannel) Flush() {
 		select {
 		case msg := <-oc.input:
 			if err := oc.output.Write(msg); err != nil {
-				fmt.Fprintf(critialLogOutput, "xlog: cannot write log message: %v", err)
+				critialLogger("cannot write log message: ", err.Error())
 			}
 		default:
 			return
@@ -210,8 +206,8 @@ func NewSyslogOutputFacility(network, address, tag string, facility syslog.Prior
 func NewSyslogWriter(network, address string, prio syslog.Priority, tag string) io.Writer {
 	s, err := syslog.Dial(network, address, prio, tag)
 	if err != nil {
-		m := fmt.Sprintf("xlog: syslog dial error: %v", err)
-		critialLogOutput.Write([]byte(m))
+		m := "syslog dial error: " + err.Error()
+		critialLogger(m)
 		panic(m)
 	}
 	return s

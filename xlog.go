@@ -23,6 +23,7 @@ package xlog // import "github.com/rs/xlog"
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"runtime"
@@ -104,6 +105,9 @@ const (
 var now = time.Now
 var exit1 = func() { os.Exit(1) }
 
+// critialLogger is a logger to use when xlog is not able to deliver a message
+var critialLogger = log.New(os.Stderr, "xlog: ", log.Ldate|log.Ltime|log.LUTC|log.Lshortfile).Print
+
 var loggerPool = sync.Pool{
 	New: func() interface{} {
 		return &logger{}
@@ -154,7 +158,7 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 		}
 	}
 	if err := l.output.Write(data); err != nil {
-		fmt.Fprint(critialLogOutput, "xlog: send error: ", err.Error())
+		critialLogger("send error: ", err.Error())
 	}
 }
 
