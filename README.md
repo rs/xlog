@@ -100,6 +100,35 @@ if err := http.ListenAndServe(":8080", nil); err != nil {
 }
 ```
 
+### Global Logger
+
+You may use the standard Go logger and plug `xlog` as it's output as `xlog` implements `io.Writer`:
+
+```go
+xlogger := xlog.New(conf)
+log.SetOutput(xlogger)
+```
+
+This has the advantage to make all your existing code or libraries already using Go's standard logger to use `xlog` with no change. The drawback though, is that you won't have control on the logging level and won't be able to add custom fields (other than ones set on the logger itself via configuration or `SetFields()`) for those messages.
+
+Another option for code you manage but which is outside of a HTTP request handler is to use the `xlog` provided default logger:
+
+```go
+xlog.Debugf("some message with %s", variable, xlog.F{"and": "field support"})
+```
+
+This way you have access to all the possibilities offered by `xlog` without having to carry the logger instance around. The default global logger has no fields set and has its output set to the console with no buffering channel. You may want to change that using the `xlog.SetLogger()` method:
+
+```go
+xlog.SetLogger(xlog.New(xlog.Config{
+    Level: xlog.LevelInfo,
+    Output: xlog.NewConsoleOutput(),
+    Fields: xlog.F{
+        "role": "my-service",
+    },
+}))
+```
+
 ### Configure Output
 
 By default, output is setup to output debug and info message on `STDOUT` and warning and errors to `STDERR`. You can easily change this setup.

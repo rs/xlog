@@ -23,6 +23,11 @@ func (o *testOutput) Write(fields map[string]interface{}) (err error) {
 	return o.err
 }
 
+func (o *testOutput) reset() {
+	o.last = nil
+	o.err = nil
+}
+
 func TestOutputChannel(t *testing.T) {
 	o := &testOutput{}
 	oc := NewOutputChannel(o)
@@ -110,6 +115,12 @@ func TestLevelOutput(t *testing.T) {
 	oError := &testOutput{}
 	oFatal := &testOutput{}
 	oWarn := &testOutput{err: errors.New("some error")}
+	reset := func() {
+		oInfo.reset()
+		oError.reset()
+		oFatal.reset()
+		oWarn.last = nil
+	}
 	l := LevelOutput{
 		Info:  oInfo,
 		Error: oError,
@@ -124,10 +135,7 @@ func TestLevelOutput(t *testing.T) {
 	assert.Equal(t, F{"level": "fatal", "foo": "bar"}, F(oFatal.last))
 	assert.Nil(t, oWarn.last)
 
-	oInfo.last = nil
-	oError.last = nil
-	oFatal.last = nil
-	oWarn.last = nil
+	reset()
 	err = l.Write(F{"level": "error", "foo": "bar"})
 	assert.NoError(t, err)
 	assert.Nil(t, oInfo.last)
@@ -135,10 +143,7 @@ func TestLevelOutput(t *testing.T) {
 	assert.Nil(t, oFatal.last)
 	assert.Nil(t, oWarn.last)
 
-	oInfo.last = nil
-	oError.last = nil
-	oFatal.last = nil
-	oWarn.last = nil
+	reset()
 	err = l.Write(F{"level": "info", "foo": "bar"})
 	assert.NoError(t, err)
 	assert.Equal(t, F{"level": "info", "foo": "bar"}, F(oInfo.last))
@@ -146,10 +151,7 @@ func TestLevelOutput(t *testing.T) {
 	assert.Nil(t, oError.last)
 	assert.Nil(t, oWarn.last)
 
-	oInfo.last = nil
-	oError.last = nil
-	oFatal.last = nil
-	oWarn.last = nil
+	reset()
 	err = l.Write(F{"level": "warn", "foo": "bar"})
 	assert.EqualError(t, err, "some error")
 	assert.Nil(t, oInfo.last)
@@ -157,10 +159,7 @@ func TestLevelOutput(t *testing.T) {
 	assert.Nil(t, oFatal.last)
 	assert.Equal(t, F{"level": "warn", "foo": "bar"}, F(oWarn.last))
 
-	oInfo.last = nil
-	oError.last = nil
-	oFatal.last = nil
-	oWarn.last = nil
+	reset()
 	err = l.Write(F{"level": "debug", "foo": "bar"})
 	assert.NoError(t, err)
 	assert.Nil(t, oInfo.last)
@@ -168,10 +167,7 @@ func TestLevelOutput(t *testing.T) {
 	assert.Nil(t, oFatal.last)
 	assert.Nil(t, oWarn.last)
 
-	oInfo.last = nil
-	oError.last = nil
-	oFatal.last = nil
-	oWarn.last = nil
+	reset()
 	err = l.Write(F{"foo": "bar"})
 	assert.NoError(t, err)
 	assert.Nil(t, oInfo.last)
