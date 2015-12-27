@@ -72,6 +72,12 @@ type Logger interface {
 	Fatalf(format string, v ...interface{})
 }
 
+// LoggerCopier defines a logger with copy support
+type LoggerCopier interface {
+	// Copy returns a copy of the logger
+	Copy() Logger
+}
+
 // Config defines logger's configuration
 type Config struct {
 	// Level is the maximum level to output, logs with lower level are discarded.
@@ -130,6 +136,29 @@ func New(c Config) Logger {
 	return l
 }
 
+// Copy returns a copy of the passed logger if the logger implements
+// LoggerCopier or nil otherwise.
+func Copy(l Logger) Logger {
+	if l, ok := l.(LoggerCopier); ok {
+		return l.Copy()
+	}
+	return nil
+}
+
+// Copy returns a copy of the logger
+func (l *logger) Copy() Logger {
+	l2 := &logger{
+		level:  l.level,
+		output: l.output,
+		fields: map[string]interface{}{},
+	}
+	for k, v := range l.fields {
+		l2.fields[k] = v
+	}
+	return l2
+}
+
+// close returns the logger to the pool for reuse
 func (l *logger) close() {
 	l.level = 0
 	l.output = nil

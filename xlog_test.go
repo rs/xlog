@@ -37,6 +37,24 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestCopy(t *testing.T) {
+	c := Config{
+		Level:  LevelError,
+		Output: NewOutputChannel(&testOutput{}),
+		Fields: F{"foo": "bar"},
+	}
+	l := New(c).(*logger)
+	l2 := Copy(l).(*logger)
+	assert.Equal(t, l.output, l2.output)
+	assert.Equal(t, l.level, l2.level)
+	assert.Equal(t, l.fields, l2.fields)
+	l2.SetField("bar", "baz")
+	assert.Equal(t, map[string]interface{}{"foo": "bar"}, l.fields)
+	assert.Equal(t, map[string]interface{}{"foo": "bar", "bar": "baz"}, l2.fields)
+
+	assert.Nil(t, Copy(NopLogger))
+}
+
 func TestNewDefautOutput(t *testing.T) {
 	L := New(Config{})
 	l, ok := L.(*logger)
