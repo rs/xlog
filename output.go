@@ -220,12 +220,18 @@ type consoleOutput struct {
 var isTerminal = term.IsTerminal
 
 // NewConsoleOutput returns a Output printing message in a colored human readable form on the
-// stdout.
+// stderr. If the stderr is not on a terminal, a LogfmtOutput is returned instead.
 func NewConsoleOutput() Output {
-	if isTerminal(os.Stdout) {
-		return consoleOutput{w: os.Stdout}
+	return NewConsoleOutputW(os.Stderr, NewLogfmtOutput(os.Stderr))
+}
+
+// NewConsoleOutputW returns a Output printing message in a colored human readable form with
+// the provided writer. If the writer is not on a terminal, the noTerm output is returned.
+func NewConsoleOutputW(w io.Writer, noTerm Output) Output {
+	if isTerminal(w) {
+		return consoleOutput{w: w}
 	}
-	return NewLogfmtOutput(os.Stdout)
+	return noTerm
 }
 
 func (o consoleOutput) Write(fields map[string]interface{}) error {

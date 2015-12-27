@@ -197,12 +197,25 @@ func TestNewConsoleOutput(t *testing.T) {
 	isTerminal = func(w io.Writer) bool { return true }
 	c := NewConsoleOutput()
 	if assert.IsType(t, consoleOutput{}, c) {
-		assert.Equal(t, os.Stdout, c.(consoleOutput).w)
+		assert.Equal(t, os.Stderr, c.(consoleOutput).w)
 	}
 	isTerminal = func(w io.Writer) bool { return false }
 	c = NewConsoleOutput()
 	if assert.IsType(t, logfmtOutput{}, c) {
-		assert.Equal(t, os.Stdout, c.(logfmtOutput).w)
+		assert.Equal(t, os.Stderr, c.(logfmtOutput).w)
+	}
+}
+
+func TestNewConsoleOutputW(t *testing.T) {
+	b := bytes.NewBuffer([]byte{})
+	c := NewConsoleOutputW(b, NewLogfmtOutput(b))
+	assert.IsType(t, logfmtOutput{}, c)
+	old := isTerminal
+	defer func() { isTerminal = old }()
+	isTerminal = func(w io.Writer) bool { return true }
+	c = NewConsoleOutputW(b, NewLogfmtOutput(b))
+	if assert.IsType(t, consoleOutput{}, c) {
+		assert.Equal(t, b, c.(consoleOutput).w)
 	}
 }
 
