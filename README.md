@@ -102,7 +102,7 @@ if err := http.ListenAndServe(":8080", nil); err != nil {
 
 ### Copy Logger
 
-You may want to get a copy of the current logger to pass a modified version of the logger to a function without touching the original:
+You may want to get a copy of the current logger to pass a modified version to a function without touching the original:
 
 ```go
 l := xlog.FromContext(ctx)
