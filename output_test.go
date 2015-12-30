@@ -191,6 +191,15 @@ func TestSyslogOutput(t *testing.T) {
 	assert.Equal(t, "syslog dial error: dial tcp: missing port in address an invalid host name", buf.String())
 }
 
+func TestRecorderOutput(t *testing.T) {
+	o := RecorderOutput{}
+	o.Write(F{"foo": "bar"})
+	o.Write(F{"bar": "baz"})
+	assert.Equal(t, []F{{"foo": "bar"}, {"bar": "baz"}}, o.Messages)
+	o.Reset()
+	assert.Equal(t, []F{}, o.Messages)
+}
+
 func TestNewConsoleOutput(t *testing.T) {
 	old := isTerminal
 	defer func() { isTerminal = old }()

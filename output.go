@@ -180,6 +180,25 @@ func (l LevelOutput) Write(fields map[string]interface{}) error {
 	return nil
 }
 
+// RecorderOutput stores the raw messages in it's Messages field. This output is useful for testing.
+type RecorderOutput struct {
+	Messages []F
+}
+
+func (l *RecorderOutput) Write(fields map[string]interface{}) error {
+	if l.Messages == nil {
+		l.Messages = []F{fields}
+	} else {
+		l.Messages = append(l.Messages, fields)
+	}
+	return nil
+}
+
+// Reset empty the output from stored messages
+func (l *RecorderOutput) Reset() {
+	l.Messages = []F{}
+}
+
 type consoleOutput struct {
 	w io.Writer
 }
