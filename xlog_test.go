@@ -52,7 +52,8 @@ func TestCopy(t *testing.T) {
 	assert.Equal(t, map[string]interface{}{"foo": "bar"}, l.fields)
 	assert.Equal(t, map[string]interface{}{"foo": "bar", "bar": "baz"}, l2.fields)
 
-	assert.Nil(t, Copy(NopLogger))
+	assert.Equal(t, NopLogger, Copy(NopLogger))
+	assert.Equal(t, NopLogger, Copy(nil))
 }
 
 func TestNewDefautOutput(t *testing.T) {

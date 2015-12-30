@@ -137,12 +137,12 @@ func New(c Config) Logger {
 }
 
 // Copy returns a copy of the passed logger if the logger implements
-// LoggerCopier or nil otherwise.
+// LoggerCopier or the NopLogger otherwise.
 func Copy(l Logger) Logger {
 	if l, ok := l.(LoggerCopier); ok {
 		return l.Copy()
 	}
-	return nil
+	return NopLogger
 }
 
 // Copy returns a copy of the logger

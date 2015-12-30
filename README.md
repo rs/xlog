@@ -100,6 +100,27 @@ if err := http.ListenAndServe(":8080", nil); err != nil {
 }
 ```
 
+### Copy Logger
+
+You may want to get a copy of the current logger to pass a modified version of the logger to a function without touching the original:
+
+```go
+l := xlog.FromContext(ctx)
+l2 := xlog.Copy(l)
+l2.SetField("foo", "bar")
+```
+
+Make sure you copy a request context logger if you plan to use it in a go routine that may still exist after the end of the current request. Contextual loggers are reused after each requests to lower the pressure on the garbage collector. If you would use such a logger in a go routine, you may end up using a logger from another request/context or worse, a nil pointer:
+
+```go
+l := xlog.FromContext(ctx)
+l2 := xlog.Copy(l)
+go func() {
+    // use the safe copy
+    l2.Info("something")
+}()
+```
+
 ### Global Logger
 
 You may use the standard Go logger and plug `xlog` as it's output as `xlog` implements `io.Writer`:
