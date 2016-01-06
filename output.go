@@ -380,3 +380,16 @@ func NewTrimOutput(maxLen int, o Output) Output {
 		return o.Write(fields)
 	})
 }
+
+// NewTrimFieldsOutput trims listed field fields of type string with a value length greater than maxLen
+// to maxLen.
+func NewTrimFieldsOutput(trimFields []string, maxLen int, o Output) Output {
+	return OutputFunc(func(fields map[string]interface{}) error {
+		for _, f := range trimFields {
+			if s, ok := fields[f].(string); ok && len(s) > maxLen {
+				fields[f] = s[:maxLen]
+			}
+		}
+		return o.Write(fields)
+	})
+}

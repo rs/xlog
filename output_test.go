@@ -305,3 +305,14 @@ func TestTrimOutput(t *testing.T) {
 	assert.Equal(t, "too long m", o.last["long"])
 	assert.Equal(t, 20, o.last["number"])
 }
+
+func TestTrimFieldsOutput(t *testing.T) {
+	o := &testOutput{}
+	i := NewTrimFieldsOutput([]string{"short", "trim", "number"}, 10, o)
+	err := i.Write(F{"short": "short", "long": "too long message", "trim": "too long message", "number": 20})
+	assert.NoError(t, err)
+	assert.Equal(t, "short", o.last["short"])
+	assert.Equal(t, "too long m", o.last["trim"])
+	assert.Equal(t, "too long message", o.last["long"])
+	assert.Equal(t, 20, o.last["number"])
+}
