@@ -1,9 +1,9 @@
 package xlog
 
 import (
-	"bytes"
+	"io"
+	"io/ioutil"
 	"log"
-	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -94,27 +94,28 @@ func TestSend(t *testing.T) {
 }
 
 func TestSendDrop(t *testing.T) {
-	buf := bytes.NewBuffer(nil)
-	critialLoggerMux.Lock()
-	oldCritialLogger := critialLogger
-	critialLogger = log.New(buf, "", 0)
-	defer func() {
+	r, w := io.Pipe()
+	go func() {
+		critialLoggerMux.Lock()
+		defer critialLoggerMux.Unlock()
+		oldCritialLogger := critialLogger
+		critialLogger = log.New(w, "", 0)
+		o := newTestOutput()
+		oc := NewOutputChannelBuffer(Discard, 1)
+		l := New(Config{Output: oc}).(*logger)
+		l.send(LevelDebug, 2, "test", F{"foo": "bar"})
+		l.send(LevelDebug, 2, "test", F{"foo": "bar"})
+		l.send(LevelDebug, 2, "test", F{"foo": "bar"})
+		o.get()
+		o.get()
+		o.get()
+		oc.Close()
 		critialLogger = oldCritialLogger
-		critialLoggerMux.Unlock()
+		w.Close()
 	}()
-	oc := NewOutputChannelBuffer(Discard, 1)
-	defer oc.Close()
-	l := New(Config{Output: oc}).(*logger)
-	l.send(LevelDebug, 2, "test", F{"foo": "bar"})
-	l.send(LevelDebug, 2, "test", F{"foo": "bar"})
-	l.send(LevelDebug, 2, "test", F{"foo": "bar"})
-	for i := 0; i < 10; i++ {
-		runtime.Gosched()
-		if "send error: buffer fullsend error: buffer full" == buf.String() {
-			return
-		}
-	}
-	t.Fail()
+	b, err := ioutil.ReadAll(r)
+	assert.NoError(t, err)
+	assert.Contains(t, string(b), "send error: buffer full")
 }
 
 func TestWxtractFields(t *testing.T) {
