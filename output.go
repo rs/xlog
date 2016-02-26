@@ -60,7 +60,7 @@ func NewOutputChannelBuffer(o Output, bufSize int) *OutputChannel {
 			select {
 			case msg := <-oc.input:
 				if err := o.Write(msg); err != nil {
-					critialLogger("cannot write log message: ", err.Error())
+					critialLogger.Print("cannot write log message: ", err.Error())
 				}
 			case <-oc.stop:
 				close(oc.stop)
@@ -90,7 +90,7 @@ func (oc *OutputChannel) Flush() {
 		select {
 		case msg := <-oc.input:
 			if err := oc.output.Write(msg); err != nil {
-				critialLogger("cannot write log message: ", err.Error())
+				critialLogger.Print("cannot write log message: ", err.Error())
 			}
 		default:
 			return

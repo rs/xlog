@@ -2,8 +2,9 @@ package xlog
 
 import (
 	"bytes"
-	"fmt"
 	"log"
+	"runtime"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 )
 
 var fakeNow = time.Date(0, 0, 0, 0, 0, 0, 0, time.Local)
+var critialLoggerMux = sync.Mutex{}
 
 func init() {
 	now = func() time.Time {
@@ -19,9 +21,11 @@ func init() {
 }
 
 func TestNew(t *testing.T) {
+	oc := NewOutputChannel(newTestOutput())
+	defer oc.Close()
 	c := Config{
 		Level:  LevelError,
-		Output: NewOutputChannel(&testOutput{}),
+		Output: oc,
 		Fields: F{"foo": "bar"},
 	}
 	L := New(c)
@@ -38,9 +42,11 @@ func TestNew(t *testing.T) {
 }
 
 func TestCopy(t *testing.T) {
+	oc := NewOutputChannel(newTestOutput())
+	defer oc.Close()
 	c := Config{
 		Level:  LevelError,
-		Output: NewOutputChannel(&testOutput{}),
+		Output: oc,
 		Fields: F{"foo": "bar"},
 	}
 	l := New(c).(*logger)
@@ -66,39 +72,49 @@ func TestNewDefautOutput(t *testing.T) {
 }
 
 func TestSend(t *testing.T) {
-	o := testOutput{}
-	l := New(Config{Output: &o}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
 	l.send(LevelDebug, 1, "test", F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test", "foo": "bar"}, last)
 
 	l.SetField("bar", "baz")
 	l.send(LevelInfo, 1, "test", F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test", "foo": "bar", "bar": "baz"}, o.last)
+	last = <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test", "foo": "bar", "bar": "baz"}, last)
 
-	l = New(Config{Output: &o, Level: 1}).(*logger)
-	o.last = nil
+	l = New(Config{Output: o, Level: 1}).(*logger)
+	o.reset()
 	l.send(0, 2, "test", F{"foo": "bar"})
-	assert.Nil(t, o.last)
+	assert.True(t, o.empty())
 }
 
 func TestSendDrop(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
+	critialLoggerMux.Lock()
 	oldCritialLogger := critialLogger
-	defer func() { critialLogger = oldCritialLogger }()
-	critialLogger = func(v ...interface{}) {
-		fmt.Fprint(buf, v...)
-	}
-	oc := NewOutputChannelBuffer(&testOutput{}, 1)
+	critialLogger = log.New(buf, "", 0)
+	defer func() {
+		critialLogger = oldCritialLogger
+		critialLoggerMux.Unlock()
+	}()
+	oc := NewOutputChannelBuffer(Discard, 1)
+	defer oc.Close()
 	l := New(Config{Output: oc}).(*logger)
 	l.send(LevelDebug, 2, "test", F{"foo": "bar"})
 	l.send(LevelDebug, 2, "test", F{"foo": "bar"})
 	l.send(LevelDebug, 2, "test", F{"foo": "bar"})
-	assert.Len(t, oc.input, 1)
-	assert.Equal(t, "send error: buffer fullsend error: buffer full", buf.String())
+	for i := 0; i < 10; i++ {
+		runtime.Gosched()
+		if "send error: buffer fullsend error: buffer full" == buf.String() {
+			return
+		}
+	}
+	t.Fail()
 }
 
 func TestWxtractFields(t *testing.T) {
@@ -124,75 +140,83 @@ func TestWxtractFields(t *testing.T) {
 }
 
 func TestDebug(t *testing.T) {
-	o := testOutput{}
-	l := New(Config{Output: &o}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
 	l.Debug("test", F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test", "foo": "bar"}, last)
 }
 
 func TestDebugf(t *testing.T) {
-	o := testOutput{}
-	l := New(Config{Output: &o}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
 	l.Debugf("test %d", 1, F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test 1", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test 1", "foo": "bar"}, last)
 }
 
 func TestInfo(t *testing.T) {
-	o := testOutput{}
-	l := New(Config{Output: &o}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
 	l.Info("test", F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test", "foo": "bar"}, last)
 }
 
 func TestInfof(t *testing.T) {
-	o := testOutput{}
-	l := New(Config{Output: &o}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
 	l.Infof("test %d", 1, F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test 1", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test 1", "foo": "bar"}, last)
 }
 
 func TestWarn(t *testing.T) {
-	o := testOutput{}
-	l := New(Config{Output: &o}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
 	l.Warn("test", F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "warn", "message": "test", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "warn", "message": "test", "foo": "bar"}, last)
 }
 
 func TestWarnf(t *testing.T) {
-	o := testOutput{}
-	l := New(Config{Output: &o}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
 	l.Warnf("test %d", 1, F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "warn", "message": "test 1", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "warn", "message": "test 1", "foo": "bar"}, last)
 }
 
 func TestError(t *testing.T) {
-	o := testOutput{}
-	l := New(Config{Output: &o}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
 	l.Error("test", F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test", "foo": "bar"}, last)
 }
 
 func TestErrorf(t *testing.T) {
-	o := testOutput{}
-	l := New(Config{Output: &o}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
 	l.Errorf("test %d%v", 1, F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar"}, last)
 }
 
 func TestFatal(t *testing.T) {
@@ -200,12 +224,13 @@ func TestFatal(t *testing.T) {
 	exited := 0
 	exit1 = func() { exited++ }
 	defer func() { exit1 = e }()
-	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: NewOutputChannel(o)}).(*logger)
 	l.Fatal("test", F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test", "foo": "bar"}, last)
 	assert.Equal(t, 1, exited)
 }
 
@@ -214,21 +239,23 @@ func TestFatalf(t *testing.T) {
 	exited := 0
 	exit1 = func() { exited++ }
 	defer func() { exit1 = e }()
-	o := testOutput{}
-	l := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	o := newTestOutput()
+	l := New(Config{Output: NewOutputChannel(o)}).(*logger)
 	l.Fatalf("test %d%v", 1, F{"foo": "bar"})
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test 1", "foo": "bar"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test 1", "foo": "bar"}, last)
 	assert.Equal(t, 1, exited)
 }
 
 func TestWrite(t *testing.T) {
-	o := testOutput{}
-	xl := New(Config{Output: NewOutputChannel(&o)}).(*logger)
+	o := newTestOutput()
+	xl := New(Config{Output: NewOutputChannel(o)}).(*logger)
 	l := log.New(xl, "prefix ", 0)
 	l.Printf("test")
-	assert.Contains(t, o.last["file"], "log_test.go:")
-	delete(o.last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "prefix test"}, o.last)
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "prefix test"}, last)
 }

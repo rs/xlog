@@ -33,7 +33,7 @@ func NewSyslogWriter(network, address string, prio syslog.Priority, tag string) 
 	s, err := syslog.Dial(network, address, prio, tag)
 	if err != nil {
 		m := "syslog dial error: " + err.Error()
-		critialLogger(m)
+		critialLogger.Print(m)
 		panic(m)
 	}
 	return s

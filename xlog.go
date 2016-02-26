@@ -112,7 +112,7 @@ var now = time.Now
 var exit1 = func() { os.Exit(1) }
 
 // critialLogger is a logger to use when xlog is not able to deliver a message
-var critialLogger = log.New(os.Stderr, "xlog: ", log.Ldate|log.Ltime|log.LUTC|log.Lshortfile).Print
+var critialLogger = log.New(os.Stderr, "xlog: ", log.Ldate|log.Ltime|log.LUTC|log.Lshortfile)
 
 var loggerPool = sync.Pool{
 	New: func() interface{} {
@@ -187,7 +187,7 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 		}
 	}
 	if err := l.output.Write(data); err != nil {
-		critialLogger("send error: ", err.Error())
+		critialLogger.Print("send error: ", err.Error())
 	}
 }
 

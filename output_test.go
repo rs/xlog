@@ -3,10 +3,10 @@ package xlog
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
+	"io/ioutil"
+	"log"
 	"os"
-	"runtime"
 	"testing"
 	"time"
 
@@ -14,48 +14,77 @@ import (
 )
 
 type testOutput struct {
-	err  error
-	last map[string]interface{}
+	err error
+	w   chan map[string]interface{}
+}
+
+func newTestOutput() *testOutput {
+	return &testOutput{w: make(chan map[string]interface{}, 10)}
+}
+
+func newTestOutputErr(err error) *testOutput {
+	return &testOutput{w: make(chan map[string]interface{}, 10), err: err}
 }
 
 func (o *testOutput) Write(fields map[string]interface{}) (err error) {
-	o.last = fields
+	o.w <- fields
 	return o.err
 }
 
 func (o *testOutput) reset() {
-	o.last = nil
-	o.err = nil
+	o.w = make(chan map[string]interface{}, 10)
+}
+
+func (o *testOutput) empty() bool {
+	select {
+	case <-o.w:
+		return false
+	default:
+		return true
+	}
+}
+
+func (o *testOutput) get() map[string]interface{} {
+	select {
+	case last := <-o.w:
+		return last
+	case <-time.After(2 * time.Second):
+		return nil
+	}
 }
 
 func TestOutputChannel(t *testing.T) {
-	o := &testOutput{}
+	o := newTestOutput()
 	oc := NewOutputChannel(o)
 	defer oc.Close()
 	oc.input <- F{"foo": "bar"}
-	assert.Nil(t, o.last)
-	runtime.Gosched()
-	assert.Equal(t, F{"foo": "bar"}, F(o.last))
+	assert.Equal(t, F{"foo": "bar"}, F(o.get()))
+}
 
+func TestOutputChannelError(t *testing.T) {
 	// Trigger error path
-	buf := bytes.NewBuffer(nil)
-	oldCritialLogger := critialLogger
-	defer func() { critialLogger = oldCritialLogger }()
-	critialLogger = func(v ...interface{}) {
-		fmt.Fprint(buf, v...)
-	}
-	o.err = errors.New("some error")
-	oc.input <- F{"foo": "bar"}
-	// Wait for log output to go through
-	runtime.Gosched()
-	for i := 0; i < 10 && buf.Len() == 0; i++ {
-		time.Sleep(10 * time.Millisecond)
-	}
-	assert.Contains(t, buf.String(), "cannot write log message: some error")
+	r, w := io.Pipe()
+	go func() {
+		critialLoggerMux.Lock()
+		defer critialLoggerMux.Unlock()
+		oldCritialLogger := critialLogger
+		critialLogger = log.New(w, "", 0)
+		o := newTestOutputErr(errors.New("some error"))
+		oc := NewOutputChannel(o)
+		oc.input <- F{"foo": "bar"}
+		o.get()
+		oc.Close()
+		critialLogger = oldCritialLogger
+		w.Close()
+	}()
+	b, err := ioutil.ReadAll(r)
+	assert.NoError(t, err)
+	assert.Contains(t, string(b), "cannot write log message: some error")
 }
 
 func TestOutputChannelClose(t *testing.T) {
-	oc := NewOutputChannel(&testOutput{})
+	oc := NewOutputChannel(newTestOutput())
+	defer oc.Close()
 	assert.NotNil(t, oc.stop)
 	oc.Close()
 	assert.Nil(t, oc.stop)
@@ -67,29 +96,28 @@ func TestDiscard(t *testing.T) {
 }
 
 func TestMultiOutput(t *testing.T) {
-	o1 := &testOutput{}
-	o2 := &testOutput{}
+	o1 := newTestOutput()
+	o2 := newTestOutput()
 	mo := MultiOutput{o1, o2}
 	err := mo.Write(F{"foo": "bar"})
 	assert.NoError(t, err)
-	assert.Equal(t, F{"foo": "bar"}, F(o1.last))
-	assert.Equal(t, F{"foo": "bar"}, F(o2.last))
+	assert.Equal(t, F{"foo": "bar"}, F(<-o1.w))
+	assert.Equal(t, F{"foo": "bar"}, F(<-o2.w))
 }
 
 func TestMultiOutputWithError(t *testing.T) {
-	o1 := &testOutput{}
-	o2 := &testOutput{}
-	o1.err = errors.New("some error")
+	o1 := newTestOutputErr(errors.New("some error"))
+	o2 := newTestOutput()
 	mo := MultiOutput{o1, o2}
 	err := mo.Write(F{"foo": "bar"})
 	assert.EqualError(t, err, "some error")
 	// Still send data to all outputs
-	assert.Equal(t, F{"foo": "bar"}, F(o1.last))
-	assert.Equal(t, F{"foo": "bar"}, F(o2.last))
+	assert.Equal(t, F{"foo": "bar"}, F(<-o1.w))
+	assert.Equal(t, F{"foo": "bar"}, F(<-o2.w))
 }
 
 func TestFilterOutput(t *testing.T) {
-	o := &testOutput{}
+	o := newTestOutput()
 	f := FilterOutput{
 		Cond: func(fields map[string]interface{}) bool {
 			return fields["foo"] == "bar"
@@ -98,12 +126,12 @@ func TestFilterOutput(t *testing.T) {
 	}
 	err := f.Write(F{"foo": "bar"})
 	assert.NoError(t, err)
-	assert.Equal(t, F{"foo": "bar"}, F(o.last))
+	assert.Equal(t, F{"foo": "bar"}, F(o.get()))
 
-	o.last = nil
+	o.reset()
 	err = f.Write(F{"foo": "baz"})
 	assert.NoError(t, err)
-	assert.Nil(t, o.last)
+	assert.True(t, o.empty())
 
 	f.Output = nil
 	err = f.Write(F{"foo": "baz"})
@@ -111,15 +139,15 @@ func TestFilterOutput(t *testing.T) {
 }
 
 func TestLevelOutput(t *testing.T) {
-	oInfo := &testOutput{}
-	oError := &testOutput{}
-	oFatal := &testOutput{}
+	oInfo := newTestOutput()
+	oError := newTestOutput()
+	oFatal := newTestOutput()
 	oWarn := &testOutput{err: errors.New("some error")}
 	reset := func() {
 		oInfo.reset()
 		oError.reset()
 		oFatal.reset()
-		oWarn.last = nil
+		oWarn.reset()
 	}
 	l := LevelOutput{
 		Info:  oInfo,
@@ -130,65 +158,67 @@ func TestLevelOutput(t *testing.T) {
 
 	err := l.Write(F{"level": "fatal", "foo": "bar"})
 	assert.NoError(t, err)
-	assert.Nil(t, oInfo.last)
-	assert.Nil(t, oError.last)
-	assert.Equal(t, F{"level": "fatal", "foo": "bar"}, F(oFatal.last))
-	assert.Nil(t, oWarn.last)
+	assert.True(t, oInfo.empty())
+	assert.True(t, oError.empty())
+	assert.Equal(t, F{"level": "fatal", "foo": "bar"}, F(<-oFatal.w))
+	assert.True(t, oWarn.empty())
 
 	reset()
 	err = l.Write(F{"level": "error", "foo": "bar"})
 	assert.NoError(t, err)
-	assert.Nil(t, oInfo.last)
-	assert.Equal(t, F{"level": "error", "foo": "bar"}, F(oError.last))
-	assert.Nil(t, oFatal.last)
-	assert.Nil(t, oWarn.last)
+	assert.True(t, oInfo.empty())
+	assert.Equal(t, F{"level": "error", "foo": "bar"}, F(<-oError.w))
+	assert.True(t, oFatal.empty())
+	assert.True(t, oWarn.empty())
 
 	reset()
 	err = l.Write(F{"level": "info", "foo": "bar"})
 	assert.NoError(t, err)
-	assert.Equal(t, F{"level": "info", "foo": "bar"}, F(oInfo.last))
-	assert.Nil(t, oFatal.last)
-	assert.Nil(t, oError.last)
-	assert.Nil(t, oWarn.last)
+	assert.Equal(t, F{"level": "info", "foo": "bar"}, F(<-oInfo.w))
+	assert.True(t, oFatal.empty())
+	assert.True(t, oError.empty())
+	assert.True(t, oWarn.empty())
 
 	reset()
 	err = l.Write(F{"level": "warn", "foo": "bar"})
 	assert.EqualError(t, err, "some error")
-	assert.Nil(t, oInfo.last)
-	assert.Nil(t, oError.last)
-	assert.Nil(t, oFatal.last)
-	assert.Equal(t, F{"level": "warn", "foo": "bar"}, F(oWarn.last))
+	assert.True(t, oInfo.empty())
+	assert.True(t, oError.empty())
+	assert.True(t, oFatal.empty())
+	assert.Equal(t, F{"level": "warn", "foo": "bar"}, F(<-oWarn.w))
 
 	reset()
 	err = l.Write(F{"level": "debug", "foo": "bar"})
 	assert.NoError(t, err)
-	assert.Nil(t, oInfo.last)
-	assert.Nil(t, oError.last)
-	assert.Nil(t, oFatal.last)
-	assert.Nil(t, oWarn.last)
+	assert.True(t, oInfo.empty())
+	assert.True(t, oError.empty())
+	assert.True(t, oFatal.empty())
+	assert.True(t, oWarn.empty())
 
 	reset()
 	err = l.Write(F{"foo": "bar"})
 	assert.NoError(t, err)
-	assert.Nil(t, oInfo.last)
-	assert.Nil(t, oError.last)
-	assert.Nil(t, oFatal.last)
-	assert.Nil(t, oWarn.last)
+	assert.True(t, oInfo.empty())
+	assert.True(t, oError.empty())
+	assert.True(t, oFatal.empty())
+	assert.True(t, oWarn.empty())
 }
 
 func TestSyslogOutput(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
+	critialLoggerMux.Lock()
 	oldCritialLogger := critialLogger
-	defer func() { critialLogger = oldCritialLogger }()
-	critialLogger = func(v ...interface{}) {
-		fmt.Fprint(buf, v...)
-	}
+	critialLogger = log.New(buf, "", 0)
+	defer func() {
+		critialLogger = oldCritialLogger
+		critialLoggerMux.Unlock()
+	}()
 	m := NewSyslogOutput("udp", "127.0.0.1:1234", "mytag")
 	assert.IsType(t, LevelOutput{}, m)
 	assert.Panics(t, func() {
 		NewSyslogOutput("tcp", "an invalid host name", "mytag")
 	})
-	assert.Equal(t, "syslog dial error: dial tcp: missing port in address an invalid host name", buf.String())
+	assert.Equal(t, "syslog dial error: dial tcp: missing port in address an invalid host name\n", buf.String())
 }
 
 func TestRecorderOutput(t *testing.T) {
@@ -288,31 +318,34 @@ func TestLogstashOutput(t *testing.T) {
 }
 
 func TestUIDOutput(t *testing.T) {
-	o := &testOutput{}
+	o := newTestOutput()
 	i := NewUIDOutput("id", o)
 	err := i.Write(F{"message": "some message", "level": "info", "foo": "bar"})
+	last := o.get()
 	assert.NoError(t, err)
-	assert.NotNil(t, o.last["id"])
-	assert.Len(t, o.last["id"], 20)
+	assert.NotNil(t, last["id"])
+	assert.Len(t, last["id"], 20)
 }
 
 func TestTrimOutput(t *testing.T) {
-	o := &testOutput{}
+	o := newTestOutput()
 	i := NewTrimOutput(10, o)
 	err := i.Write(F{"short": "short", "long": "too long message", "number": 20})
+	last := o.get()
 	assert.NoError(t, err)
-	assert.Equal(t, "short", o.last["short"])
-	assert.Equal(t, "too long m", o.last["long"])
-	assert.Equal(t, 20, o.last["number"])
+	assert.Equal(t, "short", last["short"])
+	assert.Equal(t, "too long m", last["long"])
+	assert.Equal(t, 20, last["number"])
 }
 
 func TestTrimFieldsOutput(t *testing.T) {
-	o := &testOutput{}
+	o := newTestOutput()
 	i := NewTrimFieldsOutput([]string{"short", "trim", "number"}, 10, o)
 	err := i.Write(F{"short": "short", "long": "too long message", "trim": "too long message", "number": 20})
+	last := o.get()
 	assert.NoError(t, err)
-	assert.Equal(t, "short", o.last["short"])
-	assert.Equal(t, "too long m", o.last["trim"])
-	assert.Equal(t, "too long message", o.last["long"])
-	assert.Equal(t, 20, o.last["number"])
+	assert.Equal(t, "short", last["short"])
+	assert.Equal(t, "too long m", last["trim"])
+	assert.Equal(t, "too long message", last["long"])
+	assert.Equal(t, 20, last["number"])
 }
