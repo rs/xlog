@@ -70,6 +70,8 @@ type Logger interface {
 	// Fatalf logs an error message with format followed by a call to ox.Exit(1). If last
 	// parameter is a map[string]string, it's content is added as fields to the message.
 	Fatalf(format string, v ...interface{})
+	// Output mimics std logger interface
+	Output(calldepth int, s string) error
 }
 
 // LoggerCopier defines a logger with copy support
@@ -309,4 +311,10 @@ func (l *logger) Write(p []byte) (int, error) {
 		o.Flush()
 	}
 	return len(p), nil
+}
+
+// Output implements common logger interface
+func (l *logger) Output(calldepth int, s string) error {
+	l.send(LevelInfo, 2, s, nil)
+	return nil
 }

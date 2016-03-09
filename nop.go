@@ -32,3 +32,7 @@ func (n nop) Fatalf(format string, v ...interface{}) {
 }
 
 func (n nop) Write(p []byte) (int, error) { return len(p), nil }
+
+func (n nop) Output(calldepth int, s string) error {
+	return nil
+}
