@@ -6,6 +6,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestLevelFromString(t *testing.T) {
+	assert.Equal(t, LevelDebug, LevelFromString("debug"))
+	assert.Equal(t, LevelInfo, LevelFromString("info"))
+	assert.Equal(t, LevelWarn, LevelFromString("warn"))
+	assert.Equal(t, LevelError, LevelFromString("error"))
+	assert.Equal(t, LevelFatal, LevelFromString("fatal"))
+	assert.Equal(t, LevelInfo, LevelFromString("info"))
+}
+
 func TestLevelString(t *testing.T) {
 	assert.Equal(t, "debug", LevelDebug.String())
 	assert.Equal(t, "info", LevelInfo.String())
