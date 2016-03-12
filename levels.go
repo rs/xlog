@@ -1,6 +1,10 @@
 package xlog
 
-import "strconv"
+import (
+	"bytes"
+	"fmt"
+	"strconv"
+)
 
 // Level defines log levels
 type Level int
@@ -12,6 +16,15 @@ const (
 	LevelWarn
 	LevelError
 	LevelFatal
+)
+
+// Log level bytes
+var (
+	levelBytesDebug = []byte("debug")
+	levelBytesInfo  = []byte("info")
+	levelBytesWarn  = []byte("warn")
+	levelBytesError = []byte("error")
+	levelBytesFatal = []byte("fatal")
 )
 
 // LevelFromString returns the level based on its string representation
@@ -30,6 +43,24 @@ func LevelFromString(l string) Level {
 	default:
 		return LevelInfo
 	}
+}
+
+// UnmarshalText lets Level implements the TextUnmarshaler interface used by encoding packages
+func (l *Level) UnmarshalText(text []byte) (err error) {
+	if bytes.Equal(text, levelBytesDebug) {
+		*l = LevelDebug
+	} else if bytes.Equal(text, levelBytesInfo) {
+		*l = LevelInfo
+	} else if bytes.Equal(text, levelBytesWarn) {
+		*l = LevelWarn
+	} else if bytes.Equal(text, levelBytesError) {
+		*l = LevelError
+	} else if bytes.Equal(text, levelBytesFatal) {
+		*l = LevelFatal
+	} else {
+		err = fmt.Errorf("Uknown level %v", string(text))
+	}
+	return
 }
 
 // String returns the string representation of the level.

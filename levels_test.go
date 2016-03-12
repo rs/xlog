@@ -15,6 +15,26 @@ func TestLevelFromString(t *testing.T) {
 	assert.Equal(t, LevelInfo, LevelFromString("info"))
 }
 
+func TestLevelUnmarshaler(t *testing.T) {
+	l := Level(-1)
+	err := l.UnmarshalText([]byte("debug"))
+	assert.NoError(t, err)
+	assert.Equal(t, LevelDebug, l)
+	err = l.UnmarshalText([]byte("info"))
+	assert.NoError(t, err)
+	assert.Equal(t, LevelInfo, l)
+	err = l.UnmarshalText([]byte("warn"))
+	assert.NoError(t, err)
+	assert.Equal(t, LevelWarn, l)
+	err = l.UnmarshalText([]byte("error"))
+	assert.NoError(t, err)
+	assert.Equal(t, LevelError, l)
+	err = l.UnmarshalText([]byte("fatal"))
+	assert.NoError(t, err)
+	assert.Equal(t, LevelFatal, l)
+	assert.Error(t, l.UnmarshalText([]byte("invalid")))
+}
+
 func TestLevelString(t *testing.T) {
 	assert.Equal(t, "debug", LevelDebug.String())
 	assert.Equal(t, "info", LevelInfo.String())
