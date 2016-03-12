@@ -80,3 +80,21 @@ func (l Level) String() string {
 		return strconv.FormatInt(int64(l), 10)
 	}
 }
+
+// MarshalText lets Level implements the TextMarshaler interface used by encoding packages
+func (l Level) MarshalText() ([]byte, error) {
+	switch l {
+	case LevelDebug:
+		return levelBytesDebug, nil
+	case LevelInfo:
+		return levelBytesInfo, nil
+	case LevelWarn:
+		return levelBytesWarn, nil
+	case LevelError:
+		return levelBytesError, nil
+	case LevelFatal:
+		return levelBytesFatal, nil
+	default:
+		return []byte(strconv.FormatInt(int64(l), 10)), nil
+	}
+}
