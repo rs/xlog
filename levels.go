@@ -1,6 +1,9 @@
 package xlog
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 // Level defines log levels
 type Level int
@@ -14,20 +17,63 @@ const (
 	LevelFatal
 )
 
+// Log level strings
+var (
+	levelBytesDebug = "debug"
+	levelBytesInfo  = "info"
+	levelBytesWarn  = "warn"
+	levelBytesError = "error"
+	levelBytesFatal = "fatal"
+)
+
+// LevelFromString returns the level based on its string representation
+func LevelFromString(t string) (Level, error) {
+	l := Level(0)
+	err := (&l).UnmarshalText([]byte(t))
+	return l, err
+}
+
+// UnmarshalText lets Level implements the TextUnmarshaler interface used by encoding packages
+func (l *Level) UnmarshalText(text []byte) (err error) {
+	switch string(text) {
+	case levelBytesDebug:
+		*l = LevelDebug
+	case levelBytesInfo:
+		*l = LevelInfo
+	case levelBytesWarn:
+		*l = LevelWarn
+	case levelBytesError:
+		*l = LevelError
+	case levelBytesFatal:
+		*l = LevelFatal
+	default:
+		err = fmt.Errorf("Uknown level %v", string(text))
+	}
+	return
+}
+
 // String returns the string representation of the level.
 func (l Level) String() string {
+	t, _ := l.MarshalText()
+	return string(t)
+}
+
+// MarshalText lets Level implements the TextMarshaler interface used by encoding packages
+func (l Level) MarshalText() ([]byte, error) {
+	var t string
 	switch l {
 	case LevelDebug:
-		return "debug"
+		t = levelBytesDebug
 	case LevelInfo:
-		return "info"
+		t = levelBytesInfo
 	case LevelWarn:
-		return "warn"
+		t = levelBytesWarn
 	case LevelError:
-		return "error"
+		t = levelBytesError
 	case LevelFatal:
-		return "fatal"
+		t = levelBytesFatal
 	default:
-		return strconv.FormatInt(int64(l), 10)
+		t = strconv.FormatInt(int64(l), 10)
 	}
+	return []byte(t), nil
 }
