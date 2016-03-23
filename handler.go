@@ -81,6 +81,17 @@ func MethodHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC {
 	}
 }
 
+// RequestHandler returns a handler setting the request's method and URL as a field
+// to the current context's logger using the passed name as field name.
+func RequestHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC {
+	return func(next xhandler.HandlerC) xhandler.HandlerC {
+		return xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+			FromContext(ctx).SetField(name, r.Method+" "+r.URL.String())
+			next.ServeHTTPC(ctx, w, r)
+		})
+	}
+}
+
 // RemoteAddrHandler returns a handler setting the request's remote address as a field
 // to the current context's logger using the passed name as field name.
 func RemoteAddrHandler(name string) func(next xhandler.HandlerC) xhandler.HandlerC {
