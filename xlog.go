@@ -27,6 +27,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -172,13 +173,12 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 	if level < l.level || l.output == nil {
 		return
 	}
-	data := map[string]interface{}{
-		KeyTime:    now(),
-		KeyLevel:   level.String(),
-		KeyMessage: msg,
-	}
+	data := make(map[string]interface{}, 4+len(fields)+len(l.fields))
+	data[KeyTime] = now()
+	data[KeyLevel] = level.String()
+	data[KeyMessage] = msg
 	if _, file, line, ok := runtime.Caller(calldepth); ok {
-		data[KeyFile] = fmt.Sprintf("%s:%d", path.Base(file), line)
+		data[KeyFile] = path.Base(file) + ":" + strconv.FormatInt(int64(line), 10)
 	}
 	for k, v := range fields {
 		data[k] = v
