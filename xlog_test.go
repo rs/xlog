@@ -260,3 +260,13 @@ func TestWrite(t *testing.T) {
 	delete(last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "prefix test"}, last)
 }
+
+func TestOutput(t *testing.T) {
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
+	l.Output(2, "test")
+	last := <-o.w
+	assert.Contains(t, last["file"], "log_test.go:")
+	delete(last, "file")
+	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test"}, last)
+}

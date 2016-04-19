@@ -5,6 +5,7 @@ import "testing"
 func TestNopLogger(t *testing.T) {
 	// cheap cover score upper
 	NopLogger.SetField("name", "value")
+	NopLogger.OutputF(LevelInfo, 0, "", nil)
 	NopLogger.Debug()
 	NopLogger.Debugf("format")
 	NopLogger.Info()
@@ -17,4 +18,5 @@ func TestNopLogger(t *testing.T) {
 	NopLogger.Fatal()
 	NopLogger.Fatalf("format")
 	NopLogger.Write([]byte{})
+	NopLogger.Output(0, "")
 }

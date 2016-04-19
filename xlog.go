@@ -73,6 +73,8 @@ type Logger interface {
 	Fatalf(format string, v ...interface{})
 	// Output mimics std logger interface
 	Output(calldepth int, s string) error
+	// OutputF outputs message with fields.
+	OutputF(level Level, calldepth int, msg string, fields map[string]interface{})
 }
 
 // LoggerCopier defines a logger with copy support
@@ -213,6 +215,11 @@ func (l *logger) SetField(name string, value interface{}) {
 		l.fields = map[string]interface{}{}
 	}
 	l.fields[name] = value
+}
+
+// Output implements Logger interface
+func (l *logger) OutputF(level Level, calldepth int, msg string, fields map[string]interface{}) {
+	l.send(level, calldepth+1, msg, fields)
 }
 
 // Debug implements Logger interface
