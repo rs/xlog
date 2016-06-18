@@ -1,15 +1,16 @@
-// +build go1.7
+// +build !go1.7
 
 package xlog
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 
+	"github.com/rs/xhandler"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/context"
 )
 
 func TestFromContext(t *testing.T) {
@@ -27,8 +28,8 @@ func TestNewHandler(t *testing.T) {
 		Output: NewOutputChannel(&testOutput{}),
 	}
 	lh := NewHandler(c)
-	h := lh(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := FromRequest(r)
+	h := lh(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx)
 		assert.NotNil(t, l)
 		assert.NotEqual(t, NopLogger, l)
 		if l, ok := l.(*logger); assert.True(t, ok) {
@@ -37,31 +38,31 @@ func TestNewHandler(t *testing.T) {
 			assert.Equal(t, F{"foo": "bar"}, F(l.fields))
 		}
 	}))
-	h.ServeHTTP(nil, &http.Request{})
+	h.ServeHTTPC(context.Background(), nil, nil)
 }
 
 func TestURLHandler(t *testing.T) {
 	r := &http.Request{
 		URL: &url.URL{Path: "/path", RawQuery: "foo=bar"},
 	}
-	h := URLHandler("url")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := FromRequest(r).(*logger)
+	h := URLHandler("url")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"url": "/path?foo=bar"}, F(l.fields))
 	}))
 	h = NewHandler(Config{})(h)
-	h.ServeHTTP(nil, r)
+	h.ServeHTTPC(context.Background(), nil, r)
 }
 
 func TestMethodHandler(t *testing.T) {
 	r := &http.Request{
 		Method: "POST",
 	}
-	h := MethodHandler("method")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := FromRequest(r).(*logger)
+	h := MethodHandler("method")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"method": "POST"}, F(l.fields))
 	}))
 	h = NewHandler(Config{})(h)
-	h.ServeHTTP(nil, r)
+	h.ServeHTTPC(context.Background(), nil, r)
 }
 
 func TestRequestHandler(t *testing.T) {
@@ -69,36 +70,36 @@ func TestRequestHandler(t *testing.T) {
 		Method: "POST",
 		URL:    &url.URL{Path: "/path", RawQuery: "foo=bar"},
 	}
-	h := RequestHandler("request")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := FromRequest(r).(*logger)
+	h := RequestHandler("request")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"request": "POST /path?foo=bar"}, F(l.fields))
 	}))
 	h = NewHandler(Config{})(h)
-	h.ServeHTTP(nil, r)
+	h.ServeHTTPC(context.Background(), nil, r)
 }
 
 func TestRemoteAddrHandler(t *testing.T) {
 	r := &http.Request{
 		RemoteAddr: "1.2.3.4:1234",
 	}
-	h := RemoteAddrHandler("ip")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := FromRequest(r).(*logger)
+	h := RemoteAddrHandler("ip")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"ip": "1.2.3.4"}, F(l.fields))
 	}))
 	h = NewHandler(Config{})(h)
-	h.ServeHTTP(nil, r)
+	h.ServeHTTPC(context.Background(), nil, r)
 }
 
 func TestRemoteAddrHandlerIPv6(t *testing.T) {
 	r := &http.Request{
 		RemoteAddr: "[2001:db8:a0b:12f0::1]:1234",
 	}
-	h := RemoteAddrHandler("ip")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := FromRequest(r).(*logger)
+	h := RemoteAddrHandler("ip")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"ip": "2001:db8:a0b:12f0::1"}, F(l.fields))
 	}))
 	h = NewHandler(Config{})(h)
-	h.ServeHTTP(nil, r)
+	h.ServeHTTPC(context.Background(), nil, r)
 }
 
 func TestUserAgentHandler(t *testing.T) {
@@ -107,12 +108,12 @@ func TestUserAgentHandler(t *testing.T) {
 			"User-Agent": []string{"some user agent string"},
 		},
 	}
-	h := UserAgentHandler("ua")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := FromRequest(r).(*logger)
+	h := UserAgentHandler("ua")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"ua": "some user agent string"}, F(l.fields))
 	}))
 	h = NewHandler(Config{})(h)
-	h.ServeHTTP(nil, r)
+	h.ServeHTTPC(context.Background(), nil, r)
 }
 
 func TestRefererHandler(t *testing.T) {
@@ -121,19 +122,19 @@ func TestRefererHandler(t *testing.T) {
 			"Referer": []string{"http://foo.com/bar"},
 		},
 	}
-	h := RefererHandler("ua")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := FromRequest(r).(*logger)
+	h := RefererHandler("ua")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
 		assert.Equal(t, F{"ua": "http://foo.com/bar"}, F(l.fields))
 	}))
 	h = NewHandler(Config{})(h)
-	h.ServeHTTP(nil, r)
+	h.ServeHTTPC(context.Background(), nil, r)
 }
 
 func TestRequestIDHandler(t *testing.T) {
 	r := &http.Request{}
-	h := RequestIDHandler("id", "Request-Id")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		l := FromRequest(r).(*logger)
-		if id, ok := IDFromRequest(r); assert.True(t, ok) {
+	h := RequestIDHandler("id", "Request-Id")(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		l := FromContext(ctx).(*logger)
+		if id, ok := IDFromContext(ctx); assert.True(t, ok) {
 			assert.Equal(t, l.fields["id"], id)
 			assert.Len(t, id.String(), 20)
 			assert.Equal(t, id.String(), w.Header().Get("Request-Id"))
@@ -142,5 +143,5 @@ func TestRequestIDHandler(t *testing.T) {
 	}))
 	h = NewHandler(Config{})(h)
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, r)
+	h.ServeHTTPC(context.Background(), w, r)
 }

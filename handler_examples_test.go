@@ -1,3 +1,5 @@
+// +build go1.7
+
 package xlog_test
 
 import (
@@ -6,13 +8,12 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/rs/xhandler"
+	"github.com/justinas/alice"
 	"github.com/rs/xlog"
-	"golang.org/x/net/context"
 )
 
 func Example_handler() {
-	c := xhandler.Chain{}
+	c := alice.New()
 
 	host, _ := os.Hostname()
 	conf := xlog.Config{
@@ -24,7 +25,7 @@ func Example_handler() {
 	}
 
 	// Install the logger handler with default output on the console
-	c.UseC(xlog.NewHandler(conf))
+	c.Append(xlog.NewHandler(conf))
 
 	// Plug the xlog handler's input to Go's default logger
 	log.SetFlags(0)
@@ -32,16 +33,17 @@ func Example_handler() {
 
 	// Install some provided extra handler to set some request's context fields.
 	// Thanks to those handler, all our logs will come with some pre-populated fields.
-	c.UseC(xlog.RemoteAddrHandler("ip"))
-	c.UseC(xlog.UserAgentHandler("user_agent"))
-	c.UseC(xlog.RefererHandler("referer"))
-	c.UseC(xlog.RequestIDHandler("req_id", "Request-Id"))
+	c.Append(xlog.RemoteAddrHandler("ip"))
+	c.Append(xlog.UserAgentHandler("user_agent"))
+	c.Append(xlog.RefererHandler("referer"))
+	c.Append(xlog.RequestIDHandler("req_id", "Request-Id"))
 
 	// Here is your final handler
-	h := c.Handler(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-		// Get the logger from the context. You can safely assume it will be always there,
-		// if the handler is removed, xlog.FromContext will return a NopLogger
-		l := xlog.FromContext(ctx)
+	h := c.Then(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get the logger from the request's context. You can safely assume it
+		// will be always there: if the handler is removed, xlog.FromContext
+		// will return a NopLogger
+		l := xlog.FromRequest(r)
 
 		// Then log some errors
 		if err := errors.New("some error from elsewhere"); err != nil {

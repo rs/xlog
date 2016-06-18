@@ -21,7 +21,7 @@ Read more about `xlog` on [Dailymotion engineering blog](http://engineering.dail
 - Drops message rather than blocking execution
 - Easy access logging thru [github.com/rs/xaccess](https://github.com/rs/xaccess)
 
-It works best in combination with [github.com/rs/xhandler](https://github.com/rs/xhandler).
+Works with both Go 1.7+ (with `net/context` support) and Go 1.6 if used with [github.com/rs/xhandler](https://github.com/rs/xhandler).
 
 ## Install
 
@@ -30,7 +30,7 @@ It works best in combination with [github.com/rs/xhandler](https://github.com/rs
 ## Usage
 
 ```go
-c := xhandler.Chain{}
+c := alice.New()
 
 host, _ := os.Hostname()
 conf := xlog.Config{
@@ -46,7 +46,7 @@ conf := xlog.Config{
 }
 
 // Install the logger handler
-c.UseC(xlog.NewHandler(conf))
+c.Append(xlog.NewHandler(conf))
 
 // Optionally plug the xlog handler's input to Go's default logger
 log.SetFlags(0)
@@ -55,18 +55,19 @@ log.SetOutput(xlogger)
 
 // Install some provided extra handler to set some request's context fields.
 // Thanks to those handler, all our logs will come with some pre-populated fields.
-c.UseC(xlog.MethodHandler("method"))
-c.UseC(xlog.URLHandler("url"))
-c.UseC(xlog.RemoteAddrHandler("ip"))
-c.UseC(xlog.UserAgentHandler("user_agent"))
-c.UseC(xlog.RefererHandler("referer"))
-c.UseC(xlog.RequestIDHandler("req_id", "Request-Id"))
+c.Append(xlog.MethodHandler("method"))
+c.Append(xlog.URLHandler("url"))
+c.Append(xlog.RemoteAddrHandler("ip"))
+c.Append(xlog.UserAgentHandler("user_agent"))
+c.Append(xlog.RefererHandler("referer"))
+c.Append(xlog.RequestIDHandler("req_id", "Request-Id"))
 
 // Here is your final handler
-h := c.Handler(xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-    // Get the logger from the context. You can safely assume it will be always there,
-    // if the handler is removed, xlog.FromContext will return a NopLogger
-    l := xlog.FromContext(ctx)
+h := c.Then(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    // Get the logger from the request's context. You can safely assume it
+    // will be always there: if the handler is removed, xlog.FromContext
+    // will return a NopLogger
+    l := xlog.FromRequest(r)
 
     // Then log some errors
     if err := errors.New("some error from elsewhere"); err != nil {

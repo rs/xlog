@@ -1,15 +1,15 @@
 package xlog_test
 
 import (
+	"context"
 	"errors"
 	"log"
 
 	"github.com/rs/xlog"
-	"golang.org/x/net/context"
 )
 
 func Example_log() {
-	ctx := context.TODO() // got from xhandler
+	ctx := context.TODO()
 	l := xlog.FromContext(ctx)
 
 	// Log a simple message
