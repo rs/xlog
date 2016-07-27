@@ -1,3 +1,5 @@
+// +build go1.7
+
 package xlog_test
 
 import (
