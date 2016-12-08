@@ -25,7 +25,7 @@ func Example_handler() {
 	}
 
 	// Install the logger handler with default output on the console
-	c.Append(xlog.NewHandler(conf))
+	c = c.Append(xlog.NewHandler(conf))
 
 	// Plug the xlog handler's input to Go's default logger
 	log.SetFlags(0)
@@ -33,10 +33,10 @@ func Example_handler() {
 
 	// Install some provided extra handler to set some request's context fields.
 	// Thanks to those handler, all our logs will come with some pre-populated fields.
-	c.Append(xlog.RemoteAddrHandler("ip"))
-	c.Append(xlog.UserAgentHandler("user_agent"))
-	c.Append(xlog.RefererHandler("referer"))
-	c.Append(xlog.RequestIDHandler("req_id", "Request-Id"))
+	c = c.Append(xlog.RemoteAddrHandler("ip"))
+	c = c.Append(xlog.UserAgentHandler("user_agent"))
+	c = c.Append(xlog.RefererHandler("referer"))
+	c = c.Append(xlog.RequestIDHandler("req_id", "Request-Id"))
 
 	// Here is your final handler
 	h := c.Then(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
