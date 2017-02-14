@@ -55,8 +55,8 @@ func TestCopy(t *testing.T) {
 	assert.Equal(t, l.level, l2.level)
 	assert.Equal(t, l.fields, l2.fields)
 	l2.SetField("bar", "baz")
-	assert.Equal(t, map[string]interface{}{"foo": "bar"}, l.fields)
-	assert.Equal(t, map[string]interface{}{"foo": "bar", "bar": "baz"}, l2.fields)
+	assert.Equal(t, F{"foo": "bar"}, l.fields)
+	assert.Equal(t, F{"foo": "bar", "bar": "baz"}, l2.fields)
 
 	assert.Equal(t, NopLogger, Copy(NopLogger))
 	assert.Equal(t, NopLogger, Copy(nil))
@@ -118,7 +118,7 @@ func TestSendDrop(t *testing.T) {
 	assert.Contains(t, string(b), "send error: buffer full")
 }
 
-func TestWxtractFields(t *testing.T) {
+func TestExtractFields(t *testing.T) {
 	v := []interface{}{"a", 1, map[string]interface{}{"foo": "bar"}}
 	f := extractFields(&v)
 	assert.Equal(t, map[string]interface{}{"foo": "bar"}, f)
@@ -138,6 +138,13 @@ func TestWxtractFields(t *testing.T) {
 	f = extractFields(&v)
 	assert.Nil(t, f)
 	assert.Equal(t, []interface{}{}, v)
+}
+
+func TestGetFields(t *testing.T) {
+	oc := NewOutputChannelBuffer(Discard, 1)
+	l := New(Config{Output: oc}).(*logger)
+	l.SetField("k", "v")
+	assert.Equal(t, F{"k": "v"}, l.GetFields())
 }
 
 func TestDebug(t *testing.T) {

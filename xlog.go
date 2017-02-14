@@ -41,6 +41,8 @@ type Logger interface {
 	// SetField sets a field on the logger's context. All future messages on this logger
 	// will have this field set.
 	SetField(name string, value interface{})
+	// GetFields returns all the fields set on the logger
+	GetFields() F
 	// Debug logs a debug message. If last parameter is a map[string]string, it's content
 	// is added as fields to the message.
 	Debug(v ...interface{})
@@ -102,7 +104,7 @@ type F map[string]interface{}
 type logger struct {
 	level  Level
 	output Output
-	fields map[string]interface{}
+	fields F
 }
 
 // Common field names for log messages.
@@ -215,6 +217,11 @@ func (l *logger) SetField(name string, value interface{}) {
 		l.fields = map[string]interface{}{}
 	}
 	l.fields[name] = value
+}
+
+// GetFields implements Logger interface
+func (l *logger) GetFields() F {
+	return l.fields
 }
 
 // Output implements Logger interface
