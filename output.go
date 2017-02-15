@@ -323,7 +323,7 @@ func NewJSONOutput(w io.Writer) Output {
 		if err != nil {
 			return err
 		}
-		_, err = w.Write(b)
+		_, err = w.Write(append(b, '\n'))
 		return err
 	})
 }
@@ -353,7 +353,7 @@ func NewLogstashOutput(w io.Writer) Output {
 		if err != nil {
 			return err
 		}
-		_, err = w.Write(b)
+		_, err = w.Write(append(b, '\n'))
 		return err
 	})
 }
