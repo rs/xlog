@@ -218,7 +218,7 @@ func TestSyslogOutput(t *testing.T) {
 	assert.Panics(t, func() {
 		NewSyslogOutput("tcp", "an invalid host name", "mytag")
 	})
-	assert.Equal(t, "syslog dial error: dial tcp: missing port in address an invalid host name\n", buf.String())
+	assert.Regexp(t, "syslog dial error: dial tcp:.*missing port in address.*", buf.String())
 }
 
 func TestRecorderOutput(t *testing.T) {
@@ -300,7 +300,7 @@ func TestJSONOutput(t *testing.T) {
 	j := NewJSONOutput(buf)
 	err := j.Write(F{"message": "some message", "level": "info", "foo": "bar"})
 	assert.NoError(t, err)
-	assert.Equal(t, "{\"foo\":\"bar\",\"level\":\"info\",\"message\":\"some message\"}", buf.String())
+	assert.Equal(t, "{\"foo\":\"bar\",\"level\":\"info\",\"message\":\"some message\"}\n", buf.String())
 }
 
 func TestLogstashOutput(t *testing.T) {
