@@ -318,13 +318,9 @@ func (o logfmtOutput) Write(fields map[string]interface{}) error {
 
 // NewJSONOutput returns a new JSON output with the given writer.
 func NewJSONOutput(w io.Writer) Output {
+	enc := json.NewEncoder(w)
 	return OutputFunc(func(fields map[string]interface{}) error {
-		b, err := json.Marshal(fields)
-		if err != nil {
-			return err
-		}
-		_, err = w.Write(b)
-		return err
+		return enc.Encode(fields)
 	})
 }
 
