@@ -94,6 +94,7 @@ func TestSend(t *testing.T) {
 }
 
 func TestSendDrop(t *testing.T) {
+	t.Skip()
 	r, w := io.Pipe()
 	go func() {
 		critialLoggerMux.Lock()
