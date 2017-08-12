@@ -37,7 +37,49 @@ func TestNew(t *testing.T) {
 		// Ensure l.fields is a clone
 		c.Fields["bar"] = "baz"
 		assert.Equal(t, F{"foo": "bar"}, F(l.fields))
+		assert.Equal(t, false, l.disablePooling)
 		l.close()
+	}
+}
+
+func TestNewPoolDisabled(t *testing.T) {
+	oc := NewOutputChannel(newTestOutput())
+	defer oc.Close()
+	originalPool := loggerPool
+	defer func(p *sync.Pool) {
+		loggerPool = originalPool
+	}(originalPool)
+	loggerPool = &sync.Pool{
+		New: func() interface{} {
+			assert.Fail(t, "pool used when disabled")
+			return nil
+		},
+	}
+	c := Config{
+		Level:          LevelError,
+		Output:         oc,
+		Fields:         F{"foo": "bar"},
+		DisablePooling: true,
+	}
+	L := New(c)
+	l, ok := L.(*logger)
+	if assert.True(t, ok) {
+		assert.Equal(t, LevelError, l.level)
+		assert.Equal(t, c.Output, l.output)
+		assert.Equal(t, F{"foo": "bar"}, F(l.fields))
+		// Ensure l.fields is a clone
+		c.Fields["bar"] = "baz"
+		assert.Equal(t, F{"foo": "bar"}, F(l.fields))
+		assert.Equal(t, true, l.disablePooling)
+		l.close()
+		// Assert again to ensure close does not remove internal state
+		assert.Equal(t, LevelError, l.level)
+		assert.Equal(t, c.Output, l.output)
+		assert.Equal(t, F{"foo": "bar"}, F(l.fields))
+		// Ensure l.fields is a clone
+		c.Fields["bar"] = "baz"
+		assert.Equal(t, F{"foo": "bar"}, F(l.fields))
+		assert.Equal(t, true, l.disablePooling)
 	}
 }
 
