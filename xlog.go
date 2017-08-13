@@ -96,15 +96,21 @@ type Config struct {
 	// You should always wrap your output with an OutputChannel otherwise your
 	// logger will be connected to its output synchronously.
 	Output Output
+	// DisablePooling removes the use of a sync.Pool for cases where logger
+	// instances are needed beyond the scope of a request handler. This option
+	// puts a greater pressure on GC and increases the amount of memory allocated
+	// and freed. Use only if persistent loggers are a requirement.
+	DisablePooling bool
 }
 
 // F represents a set of log message fields
 type F map[string]interface{}
 
 type logger struct {
-	level  Level
-	output Output
-	fields F
+	level          Level
+	output         Output
+	fields         F
+	disablePooling bool
 }
 
 // Common field names for log messages.
@@ -121,7 +127,7 @@ var exit1 = func() { os.Exit(1) }
 // critialLogger is a logger to use when xlog is not able to deliver a message
 var critialLogger = log.New(os.Stderr, "xlog: ", log.Ldate|log.Ltime|log.LUTC|log.Lshortfile)
 
-var loggerPool = sync.Pool{
+var loggerPool = &sync.Pool{
 	New: func() interface{} {
 		return &logger{}
 	},
@@ -131,7 +137,12 @@ var loggerPool = sync.Pool{
 //
 // This function should only be used out of a request. Use FromContext in request.
 func New(c Config) Logger {
-	l := loggerPool.Get().(*logger)
+	var l *logger
+	if c.DisablePooling {
+		l = &logger{}
+	} else {
+		l = loggerPool.Get().(*logger)
+	}
 	l.level = c.Level
 	l.output = c.Output
 	if l.output == nil {
@@ -140,6 +151,7 @@ func New(c Config) Logger {
 	for k, v := range c.Fields {
 		l.SetField(k, v)
 	}
+	l.disablePooling = c.DisablePooling
 	return l
 }
 
@@ -155,9 +167,10 @@ func Copy(l Logger) Logger {
 // Copy returns a copy of the logger
 func (l *logger) Copy() Logger {
 	l2 := &logger{
-		level:  l.level,
-		output: l.output,
-		fields: map[string]interface{}{},
+		level:          l.level,
+		output:         l.output,
+		fields:         map[string]interface{}{},
+		disablePooling: l.disablePooling,
 	}
 	for k, v := range l.fields {
 		l2.fields[k] = v
@@ -167,10 +180,12 @@ func (l *logger) Copy() Logger {
 
 // close returns the logger to the pool for reuse
 func (l *logger) close() {
-	l.level = 0
-	l.output = nil
-	l.fields = nil
-	loggerPool.Put(l)
+	if !l.disablePooling {
+		l.level = 0
+		l.output = nil
+		l.fields = nil
+		loggerPool.Put(l)
+	}
 }
 
 func (l *logger) send(level Level, calldepth int, msg string, fields map[string]interface{}) {
