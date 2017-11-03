@@ -114,7 +114,7 @@ type logger struct {
 }
 
 // Common field names for log messages.
-const (
+var (
 	KeyTime    = "time"
 	KeyMessage = "message"
 	KeyLevel   = "level"
