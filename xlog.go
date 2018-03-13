@@ -18,7 +18,7 @@
 //     - Easy access logging thru github.com/rs/xaccess
 //
 // It works best in combination with github.com/rs/xhandler.
-package xlog // import "github.com/rs/xlog"
+package xlog // import "github.com/Ak-Army/xlog"
 
 import (
 	"fmt"
@@ -76,7 +76,7 @@ type Logger interface {
 	// Output mimics std logger interface
 	Output(calldepth int, s string) error
 	// OutputF outputs message with fields.
-	OutputF(level Level, calldepth int, msg string, fields map[string]interface{})
+	OutputF(level Level, calldepth int, msg string, fields map[string]interface{}, err error)
 }
 
 // LoggerCopier defines a logger with copy support
@@ -119,6 +119,7 @@ var (
 	KeyMessage = "message"
 	KeyLevel   = "level"
 	KeyFile    = "file"
+	KeyError   = "error"
 )
 
 var now = time.Now
@@ -188,7 +189,7 @@ func (l *logger) close() {
 	}
 }
 
-func (l *logger) send(level Level, calldepth int, msg string, fields map[string]interface{}) {
+func (l *logger) send(level Level, calldepth int, msg string, fields map[string]interface{}, err error) {
 	if level < l.level || l.output == nil {
 		return
 	}
@@ -196,6 +197,9 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 	data[KeyTime] = now()
 	data[KeyLevel] = level.String()
 	data[KeyMessage] = msg
+	if err != nil {
+		data[KeyError] = err
+	}
 	if _, file, line, ok := runtime.Caller(calldepth); ok {
 		data[KeyFile] = path.Base(file) + ":" + strconv.FormatInt(int64(line), 10)
 	}
@@ -212,18 +216,21 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 	}
 }
 
-func extractFields(v *[]interface{}) map[string]interface{} {
+func extractFields(v *[]interface{}) (map[string]interface{}, error) {
+	var f map[string]interface{}
+	var ok bool
+	var e error
 	if l := len(*v); l > 0 {
-		if f, ok := (*v)[l-1].(map[string]interface{}); ok {
+		if f, ok = (*v)[l-1].(map[string]interface{}); ok {
 			*v = (*v)[:l-1]
-			return f
-		}
-		if f, ok := (*v)[l-1].(F); ok {
+		} else if f, ok = (*v)[l-1].(F); ok {
 			*v = (*v)[:l-1]
-			return f
 		}
 	}
-	return nil
+	if l := len(*v); l > 0 {
+		e, ok = (*v)[l-1].(error)
+	}
+	return f, e
 }
 
 // SetField implements Logger interface
@@ -240,50 +247,50 @@ func (l *logger) GetFields() F {
 }
 
 // Output implements Logger interface
-func (l *logger) OutputF(level Level, calldepth int, msg string, fields map[string]interface{}) {
-	l.send(level, calldepth+1, msg, fields)
+func (l *logger) OutputF(level Level, calldepth int, msg string, fields map[string]interface{}, err error) {
+	l.send(level, calldepth+1, msg, fields, err)
 }
 
 // Debug implements Logger interface
 func (l *logger) Debug(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelDebug, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelDebug, 2, fmt.Sprint(v...), f, e)
 }
 
 // Debugf implements Logger interface
 func (l *logger) Debugf(format string, v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelDebug, 2, fmt.Sprintf(format, v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelDebug, 2, fmt.Sprintf(format, v...), f, e)
 }
 
 // Info implements Logger interface
 func (l *logger) Info(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelInfo, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelInfo, 2, fmt.Sprint(v...), f, e)
 }
 
 // Infof implements Logger interface
 func (l *logger) Infof(format string, v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelInfo, 2, fmt.Sprintf(format, v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelInfo, 2, fmt.Sprintf(format, v...), f, e)
 }
 
 // Warn implements Logger interface
 func (l *logger) Warn(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelWarn, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelWarn, 2, fmt.Sprint(v...), f, e)
 }
 
 // Warnf implements Logger interface
 func (l *logger) Warnf(format string, v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelWarn, 2, fmt.Sprintf(format, v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelWarn, 2, fmt.Sprintf(format, v...), f, e)
 }
 
 // Error implements Logger interface
 func (l *logger) Error(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelError, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelError, 2, fmt.Sprint(v...), f, e)
 }
 
 // Errorf implements Logger interface
@@ -291,7 +298,7 @@ func (l *logger) Error(v ...interface{}) {
 // Go vet users: you may append %v at the end of you format when using xlog.F{} as a last
 // argument to workaround go vet false alarm.
 func (l *logger) Errorf(format string, v ...interface{}) {
-	f := extractFields(&v)
+	f, e := extractFields(&v)
 	if f != nil {
 		// Let user add a %v at the end of the message when fields are passed to satisfy go vet
 		l := len(format)
@@ -299,13 +306,13 @@ func (l *logger) Errorf(format string, v ...interface{}) {
 			format = format[0 : l-2]
 		}
 	}
-	l.send(LevelError, 2, fmt.Sprintf(format, v...), f)
+	l.send(LevelError, 2, fmt.Sprintf(format, v...), f, e)
 }
 
 // Fatal implements Logger interface
 func (l *logger) Fatal(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelFatal, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelFatal, 2, fmt.Sprint(v...), f, e)
 	if o, ok := l.output.(*OutputChannel); ok {
 		o.Close()
 	}
@@ -317,7 +324,7 @@ func (l *logger) Fatal(v ...interface{}) {
 // Go vet users: you may append %v at the end of you format when using xlog.F{} as a last
 // argument to workaround go vet false alarm.
 func (l *logger) Fatalf(format string, v ...interface{}) {
-	f := extractFields(&v)
+	f, e := extractFields(&v)
 	if f != nil {
 		// Let user add a %v at the end of the message when fields are passed to satisfy go vet
 		l := len(format)
@@ -325,7 +332,7 @@ func (l *logger) Fatalf(format string, v ...interface{}) {
 			format = format[0 : l-2]
 		}
 	}
-	l.send(LevelFatal, 2, fmt.Sprintf(format, v...), f)
+	l.send(LevelFatal, 2, fmt.Sprintf(format, v...), f, e)
 	if o, ok := l.output.(*OutputChannel); ok {
 		o.Close()
 	}
@@ -335,7 +342,7 @@ func (l *logger) Fatalf(format string, v ...interface{}) {
 // Write implements io.Writer interface
 func (l *logger) Write(p []byte) (int, error) {
 	msg := strings.TrimRight(string(p), "\n")
-	l.send(LevelInfo, 4, msg, nil)
+	l.send(LevelInfo, 4, msg, nil, nil)
 	if o, ok := l.output.(*OutputChannel); ok {
 		o.Flush()
 	}
@@ -344,6 +351,6 @@ func (l *logger) Write(p []byte) (int, error) {
 
 // Output implements common logger interface
 func (l *logger) Output(calldepth int, s string) error {
-	l.send(LevelInfo, 2, s, nil)
+	l.send(LevelInfo, 2, s, nil, nil)
 	return nil
 }

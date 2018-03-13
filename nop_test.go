@@ -5,7 +5,7 @@ import "testing"
 func TestNopLogger(t *testing.T) {
 	// cheap cover score upper
 	NopLogger.SetField("name", "value")
-	NopLogger.OutputF(LevelInfo, 0, "", nil)
+	NopLogger.OutputF(LevelInfo, 0, "", nil, nil)
 	NopLogger.Debug()
 	NopLogger.Debugf("format")
 	NopLogger.Info()

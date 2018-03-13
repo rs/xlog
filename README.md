@@ -3,7 +3,7 @@
 
 # HTTP Handler Logger
 
-[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/rs/xlog) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/rs/xlog/master/LICENSE) [![Build Status](https://travis-ci.org/rs/xlog.svg?branch=master)](https://travis-ci.org/rs/xlog) [![Coverage](http://gocover.io/_badge/github.com/rs/xlog)](http://gocover.io/github.com/rs/xlog)
+[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/Ak-Army/xlog) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/rs/xlog/master/LICENSE) [![Build Status](https://travis-ci.org/rs/xlog.svg?branch=master)](https://travis-ci.org/rs/xlog) [![Coverage](http://gocover.io/_badge/github.com/Ak-Army/xlog)](http://gocover.io/github.com/Ak-Army/xlog)
 
 `xlog` is a logger for [net/context](https://godoc.org/golang.org/x/net/context) aware HTTP applications.
 
@@ -28,7 +28,7 @@ Works with both Go 1.7+ (with `net/context` support) and Go 1.6 if used with [gi
 
 ## Install
 
-    go get github.com/rs/xlog
+    go get github.com/Ak-Army/xlog
 
 ## Usage
 
@@ -158,7 +158,7 @@ xlog.SetLogger(xlog.New(xlog.Config{
 
 By default, output is setup to output debug and info message on `STDOUT` and warning and errors to `STDERR`. You can easily change this setup.
 
-XLog output can be customized using composable output handlers. Thanks to the [LevelOutput](https://godoc.org/github.com/rs/xlog#LevelOutput), [MultiOutput](https://godoc.org/github.com/rs/xlog#MultiOutput) and [FilterOutput](https://godoc.org/github.com/rs/xlog#FilterOutput), it is easy to route messages precisely.
+XLog output can be customized using composable output handlers. Thanks to the [LevelOutput](https://godoc.org/github.com/Ak-Army/xlog#LevelOutput), [MultiOutput](https://godoc.org/github.com/Ak-Army/xlog#MultiOutput) and [FilterOutput](https://godoc.org/github.com/Ak-Army/xlog#FilterOutput), it is easy to route messages precisely.
 
 ```go
 conf := xlog.Config{
@@ -187,25 +187,25 @@ h = xlog.NewHandler(conf)
 
 | Name | Description |
 |------|-------------|
-| [OutputChannel](https://godoc.org/github.com/rs/xlog#OutputChannel) | Buffers messages before sending. This output should always be the output directly set to xlog's configuration.
-| [MultiOutput](https://godoc.org/github.com/rs/xlog#MultiOutput) | Routes the same message to several outputs. If one or more outputs return error, the last error is returned.
-| [FilterOutput](https://godoc.org/github.com/rs/xlog#FilterOutput) | Tests a condition on the message and forward it to the child output if true.
-| [LevelOutput](https://godoc.org/github.com/rs/xlog#LevelOutput) | Routes messages per level outputs.
-| [ConsoleOutput](https://godoc.org/github.com/rs/xlog#NewConsoleOutput) | Prints messages in a human readable form on the stdout with color when supported. Fallback to logfmt output if the stdout isn't a terminal.
-| [JSONOutput](https://godoc.org/github.com/rs/xlog#NewJSONOutput) | Serialize messages in JSON.
-| [LogfmtOutput](https://godoc.org/github.com/rs/xlog#NewLogfmtOutput) | Serialize messages using Heroku like [logfmt](https://github.com/kr/logfmt).
-| [LogstashOutput](https://godoc.org/github.com/rs/xlog#NewLogstashOutput) | Serialize JSON message using Logstash 2.0 (schema v1) structured format.
-| [SyslogOutput](https://godoc.org/github.com/rs/xlog#NewSyslogOutput) | Send messages to syslog.
-| [UIDOutput](https://godoc.org/github.com/rs/xlog#NewUIDOutput) | Append a globally unique id to every message and forward it to the next output.
+| [OutputChannel](https://godoc.org/github.com/Ak-Army/xlog#OutputChannel) | Buffers messages before sending. This output should always be the output directly set to xlog's configuration.
+| [MultiOutput](https://godoc.org/github.com/Ak-Army/xlog#MultiOutput) | Routes the same message to several outputs. If one or more outputs return error, the last error is returned.
+| [FilterOutput](https://godoc.org/github.com/Ak-Army/xlog#FilterOutput) | Tests a condition on the message and forward it to the child output if true.
+| [LevelOutput](https://godoc.org/github.com/Ak-Army/xlog#LevelOutput) | Routes messages per level outputs.
+| [ConsoleOutput](https://godoc.org/github.com/Ak-Army/xlog#NewConsoleOutput) | Prints messages in a human readable form on the stdout with color when supported. Fallback to logfmt output if the stdout isn't a terminal.
+| [JSONOutput](https://godoc.org/github.com/Ak-Army/xlog#NewJSONOutput) | Serialize messages in JSON.
+| [LogfmtOutput](https://godoc.org/github.com/Ak-Army/xlog#NewLogfmtOutput) | Serialize messages using Heroku like [logfmt](https://github.com/kr/logfmt).
+| [LogstashOutput](https://godoc.org/github.com/Ak-Army/xlog#NewLogstashOutput) | Serialize JSON message using Logstash 2.0 (schema v1) structured format.
+| [SyslogOutput](https://godoc.org/github.com/Ak-Army/xlog#NewSyslogOutput) | Send messages to syslog.
+| [UIDOutput](https://godoc.org/github.com/Ak-Army/xlog#NewUIDOutput) | Append a globally unique id to every message and forward it to the next output.
 
 ## Third Party Extensions
 
 | Project | Author | Description |
 |---------|--------|-------------|
 | [gRPClog](https://github.com/clawio/grpcxlog) | [Hugo González Labrador](https://github.com/labkode) | An adapter to use xlog as the logger for grpclog.
-| [xlog-nsq](https://github.com/rs/xlog-nsq) | [Olivier Poitrey](https://github.com/rs) | An xlog to [NSQ](http://nsq.io) output.
+| [xlog-nsq](https://github.com/Ak-Army/xlog-nsq) | [Olivier Poitrey](https://github.com/rs) | An xlog to [NSQ](http://nsq.io) output.
 | [xlog-sentry](https://github.com/trong/xlog-sentry) | [trong](https://github.com/trong) | An xlog to [Sentry](https://getsentry.com/) output.
 
 ## Licenses
 
-All source code is licensed under the [MIT License](https://raw.github.com/rs/xlog/master/LICENSE).
+All source code is licensed under the [MIT License](https://raw.github.com/Ak-Army/xlog/master/LICENSE).

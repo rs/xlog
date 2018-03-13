@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/rs/xid"
-	"github.com/rs/xlog/internal/term"
+	"github.com/Ak-Army/xlog/internal/term"
 )
 
 // Output sends a log message fields to a destination.

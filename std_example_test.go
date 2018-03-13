@@ -1,6 +1,6 @@
 package xlog_test
 
-import "github.com/rs/xlog"
+import "github.com/Ak-Army/xlog"
 
 func ExampleSetLogger() {
 	xlog.SetLogger(xlog.New(xlog.Config{
