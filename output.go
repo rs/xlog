@@ -290,7 +290,7 @@ func (o logfmtOutput) Write(fields map[string]interface{}) error {
 	keys := []string{}
 	for k := range fields {
 		switch k {
-		case KeyLevel, KeyMessage, KeyTime:
+		case KeyLevel, KeyMessage, KeyTime, KeyError:
 			continue
 		}
 		keys = append(keys, k)
