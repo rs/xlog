@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/justinas/alice"
-	"github.com/Ak-Army/xlog"
+	"github.com/rs/xlog"
 )
 
 func Example_handler() {
