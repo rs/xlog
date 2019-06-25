@@ -3,7 +3,7 @@ package xlog_test
 import (
 	"log/syslog"
 
-	"github.com/rs/xlog"
+	"github.com/Ak-Army/xlog"
 )
 
 func Example_combinedOutputs() {

@@ -1,6 +1,7 @@
 package xlog
 
 import (
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -9,7 +10,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"errors"
 )
 
 var fakeNow = time.Date(0, 0, 0, 0, 0, 0, 0, time.Local)

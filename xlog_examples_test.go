@@ -7,7 +7,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/rs/xlog"
+	"github.com/Ak-Army/xlog"
 )
 
 func Example_log() {
