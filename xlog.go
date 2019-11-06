@@ -221,15 +221,20 @@ func extractFields(v *[]interface{}) (map[string]interface{}, error) {
 	var ok bool
 	var e error
 	if l := len(*v); l > 0 {
+		if e, ok = (*v)[l-1].(error); ok {
+			*v = (*v)[:l-1]
+		}
+	}
+	if l := len(*v); l > 0 {
 		if f, ok = (*v)[l-1].(map[string]interface{}); ok {
 			*v = (*v)[:l-1]
 		} else if f, ok = (*v)[l-1].(F); ok {
 			*v = (*v)[:l-1]
 		}
 	}
-	if l := len(*v); l > 0 {
+	if l := len(*v); l > 0 && e == nil {
 		if e, ok = (*v)[l-1].(error); ok {
-			*v = (*v)[0 : l-1]
+			*v = (*v)[:l-1]
 		}
 	}
 	return f, e
