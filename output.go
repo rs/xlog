@@ -246,11 +246,19 @@ func (o consoleOutput) Write(fields map[string]interface{}) error {
 		msg = strings.Replace(msg, "\n", "\\n", -1)
 		buf.Write([]byte(msg))
 	}
+	if msg, ok := fields[KeyError]; ok {
+		buf.WriteByte(' ')
+		colorPrint(buf, KeyError, red)
+		buf.WriteByte('=')
+		if err := writeValue(buf, msg); err != nil {
+			return err
+		}
+	}
 	// Gather field keys
 	keys := []string{}
 	for k := range fields {
 		switch k {
-		case KeyLevel, KeyMessage, KeyTime:
+		case KeyLevel, KeyMessage, KeyTime, KeyError:
 			continue
 		}
 		keys = append(keys, k)
@@ -298,7 +306,7 @@ func (o logfmtOutput) Write(fields map[string]interface{}) error {
 	// Sort fields by key names
 	sort.Strings(keys)
 	// Prepend default fields in a specific order
-	keys = append([]string{KeyLevel, KeyMessage, KeyTime}, keys...)
+	keys = append([]string{KeyLevel, KeyMessage, KeyError, KeyTime}, keys...)
 	l := len(keys)
 	for i, k := range keys {
 		buf.Write([]byte(k))
