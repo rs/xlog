@@ -306,7 +306,11 @@ func (o logfmtOutput) Write(fields map[string]interface{}) error {
 	// Sort fields by key names
 	sort.Strings(keys)
 	// Prepend default fields in a specific order
-	keys = append([]string{KeyLevel, KeyMessage, KeyError, KeyTime}, keys...)
+	if _, ok := fields[KeyError]; ok {
+		keys = append([]string{KeyLevel, KeyMessage, KeyError, KeyTime}, keys...)
+	} else {
+		keys = append([]string{KeyLevel, KeyMessage, KeyTime}, keys...)
+	}
 	l := len(keys)
 	for i, k := range keys {
 		buf.Write([]byte(k))

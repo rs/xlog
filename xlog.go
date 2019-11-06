@@ -228,7 +228,9 @@ func extractFields(v *[]interface{}) (map[string]interface{}, error) {
 		}
 	}
 	if l := len(*v); l > 0 {
-		e, ok = (*v)[l-1].(error)
+		if e, ok = (*v)[l-1].(error); ok {
+			*v = (*v)[0 : l-1]
+		}
 	}
 	return f, e
 }
@@ -299,13 +301,6 @@ func (l *logger) Error(v ...interface{}) {
 // argument to workaround go vet false alarm.
 func (l *logger) Errorf(format string, v ...interface{}) {
 	f, e := extractFields(&v)
-	if f != nil {
-		// Let user add a %v at the end of the message when fields are passed to satisfy go vet
-		l := len(format)
-		if l > 2 && format[l-2] == '%' && format[l-1] == 'v' {
-			format = format[0 : l-2]
-		}
-	}
 	l.send(LevelError, 2, fmt.Sprintf(format, v...), f, e)
 }
 
@@ -325,13 +320,6 @@ func (l *logger) Fatal(v ...interface{}) {
 // argument to workaround go vet false alarm.
 func (l *logger) Fatalf(format string, v ...interface{}) {
 	f, e := extractFields(&v)
-	if f != nil {
-		// Let user add a %v at the end of the message when fields are passed to satisfy go vet
-		l := len(format)
-		if l > 2 && format[l-2] == '%' && format[l-1] == 'v' {
-			format = format[0 : l-2]
-		}
-	}
 	l.send(LevelFatal, 2, fmt.Sprintf(format, v...), f, e)
 	if o, ok := l.output.(*OutputChannel); ok {
 		o.Close()
