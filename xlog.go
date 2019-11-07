@@ -220,7 +220,7 @@ func extractFields(v *[]interface{}) (map[string]interface{}, error) {
 	var f map[string]interface{}
 	var ok bool
 	var e error
-	if l := len(*v); l > 0 {
+	if l := len(*v); l > 1 {
 		if e, ok = (*v)[l-1].(error); ok {
 			*v = (*v)[:l-1]
 		}
@@ -232,7 +232,7 @@ func extractFields(v *[]interface{}) (map[string]interface{}, error) {
 			*v = (*v)[:l-1]
 		}
 	}
-	if l := len(*v); l > 0 && e == nil {
+	if l := len(*v); l > 1 && e == nil {
 		if e, ok = (*v)[l-1].(error); ok {
 			*v = (*v)[:l-1]
 		}
