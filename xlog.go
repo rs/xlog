@@ -41,6 +41,9 @@ type Logger interface {
 	// SetField sets a field on the logger's context. All future messages on this logger
 	// will have this field set.
 	SetField(name string, value interface{})
+	// SetFields sets a fielsd on the logger's context. All future messages on this logger
+	// will have this fields set.
+	SetFields(fields F)
 	// GetFields returns all the fields set on the logger
 	GetFields() F
 	// Debug logs a debug message. If last parameter is a map[string]string, it's content
@@ -246,6 +249,13 @@ func (l *logger) SetField(name string, value interface{}) {
 		l.fields = map[string]interface{}{}
 	}
 	l.fields[name] = value
+}
+
+// SetFields
+func (l *logger) SetFields(fields F) {
+	for name, value := range fields {
+		l.fields[name] = value
+	}
 }
 
 // GetFields implements Logger interface
