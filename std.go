@@ -11,6 +11,11 @@ func SetLogger(logger Logger) {
 	std = logger
 }
 
+// GetLogger get the global logger instance
+func GetLogger() Logger {
+	return std
+}
+
 // Debug calls the Debug() method on the default logger
 func Debug(v ...interface{}) {
 	f, e := extractFields(&v)
