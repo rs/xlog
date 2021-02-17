@@ -1,6 +1,7 @@
 package xlog
 
 import (
+	"errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -116,14 +117,14 @@ func TestNewDefautOutput(t *testing.T) {
 func TestSend(t *testing.T) {
 	o := newTestOutput()
 	l := New(Config{Output: o}).(*logger)
-	l.send(LevelDebug, 1, "test", F{"foo": "bar"})
+	l.send(LevelDebug, 1, "test", F{"foo": "bar"}, nil)
 	last := <-o.w
 	assert.Contains(t, last["file"], "log_test.go:")
 	delete(last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test", "foo": "bar"}, last)
 
 	l.SetField("bar", "baz")
-	l.send(LevelInfo, 1, "test", F{"foo": "bar"})
+	l.send(LevelInfo, 1, "test", F{"foo": "bar"}, nil)
 	last = <-o.w
 	assert.Contains(t, last["file"], "log_test.go:")
 	delete(last, "file")
@@ -131,7 +132,7 @@ func TestSend(t *testing.T) {
 
 	l = New(Config{Output: o, Level: 1}).(*logger)
 	o.reset()
-	l.send(0, 2, "test", F{"foo": "bar"})
+	l.send(0, 2, "test", F{"foo": "bar"}, nil)
 	assert.True(t, o.empty())
 }
 
@@ -146,9 +147,9 @@ func TestSendDrop(t *testing.T) {
 		o := newTestOutput()
 		oc := NewOutputChannelBuffer(Discard, 1)
 		l := New(Config{Output: oc}).(*logger)
-		l.send(LevelDebug, 2, "test", F{"foo": "bar"})
-		l.send(LevelDebug, 2, "test", F{"foo": "bar"})
-		l.send(LevelDebug, 2, "test", F{"foo": "bar"})
+		l.send(LevelDebug, 2, "test", F{"foo": "bar"}, nil)
+		l.send(LevelDebug, 2, "test", F{"foo": "bar"}, nil)
+		l.send(LevelDebug, 2, "test", F{"foo": "bar"}, nil)
 		o.get()
 		o.get()
 		o.get()
@@ -162,24 +163,34 @@ func TestSendDrop(t *testing.T) {
 }
 
 func TestExtractFields(t *testing.T) {
-	v := []interface{}{"a", 1, map[string]interface{}{"foo": "bar"}}
-	f := extractFields(&v)
+	err := errors.New("err")
+	v := []interface{}{"a", 1, err, map[string]interface{}{"foo": "bar"}}
+	f, e := extractFields(&v)
 	assert.Equal(t, map[string]interface{}{"foo": "bar"}, f)
-	assert.Equal(t, []interface{}{"a", 1}, v)
+	assert.Equal(t, []interface{}{"a", 1, err}, v)
+	assert.Equal(t, err, e)
 
 	v = []interface{}{map[string]interface{}{"foo": "bar"}, "a", 1}
-	f = extractFields(&v)
+	f, e = extractFields(&v)
 	assert.Nil(t, f)
+	assert.Nil(t, e)
+	assert.Equal(t, []interface{}{map[string]interface{}{"foo": "bar"}, "a", 1}, v)
+
+	v = []interface{}{map[string]interface{}{"foo": "bar"}, "a", 1}
+	f, e = extractFields(&v)
+	assert.Nil(t, f)
+	assert.Nil(t, e)
 	assert.Equal(t, []interface{}{map[string]interface{}{"foo": "bar"}, "a", 1}, v)
 
 	v = []interface{}{"a", 1, F{"foo": "bar"}}
-	f = extractFields(&v)
+	f, e = extractFields(&v)
 	assert.Equal(t, map[string]interface{}{"foo": "bar"}, f)
 	assert.Equal(t, []interface{}{"a", 1}, v)
 
 	v = []interface{}{}
-	f = extractFields(&v)
+	f, e = extractFields(&v)
 	assert.Nil(t, f)
+	assert.Nil(t, e)
 	assert.Equal(t, []interface{}{}, v)
 }
 

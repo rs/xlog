@@ -7,9 +7,12 @@ var NopLogger = &nop{}
 
 func (n nop) SetField(name string, value interface{}) {}
 
+func (n nop) SetFields(fields F) {}
+
 func (n nop) GetFields() F { return map[string]interface{}{} }
 
-func (n nop) OutputF(level Level, calldepth int, msg string, fields map[string]interface{}) {}
+func (n nop) OutputF(level Level, calldepth int, msg string, fields map[string]interface{}, err error) {
+}
 
 func (n nop) Debug(v ...interface{}) {}
 
