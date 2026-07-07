@@ -1,7 +1,6 @@
 package xlog
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -34,11 +33,8 @@ func writeValue(w io.Writer, v interface{}) (err error) {
 		_, err = w.Write([]byte("null"))
 	case string:
 		if strings.IndexFunc(v, needsQuotedValueRune) != -1 {
-			var b []byte
-			b, err = json.Marshal(v)
-			if err == nil {
-				w.Write(b)
-			}
+			s := fmt.Sprintf("%q", v)
+			_, err = w.Write([]byte(s))
 		} else {
 			_, err = w.Write([]byte(v))
 		}

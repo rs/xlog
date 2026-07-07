@@ -8,25 +8,27 @@
 //
 // Features:
 //
-//     - Per request log context
-//     - Per request and/or per message key/value fields
-//     - Log levels (Debug, Info, Warn, Error)
-//     - Color output when terminal is detected
-//     - Custom output (JSON, logfmt, …)
-//     - Automatic gathering of request context like User-Agent, IP etc.
-//     - Drops message rather than blocking execution
-//     - Easy access logging thru github.com/rs/xaccess
+//   - Per request log context
+//   - Per request and/or per message key/value fields
+//   - Log levels (Debug, Info, Warn, Error)
+//   - Color output when terminal is detected
+//   - Custom output (JSON, logfmt, …)
+//   - Automatic gathering of request context like User-Agent, IP etc.
+//   - Drops message rather than blocking execution
+//   - Easy access logging thru github.com/rs/xaccess
 //
 // It works best in combination with github.com/rs/xhandler.
-package xlog // import "github.com/rs/xlog"
+package xlog // import "github.com/Ak-Army/xlog"
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"path"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,9 +40,15 @@ type Logger interface {
 	// Implements io.Writer so it can be set a output of log.Logger
 	io.Writer
 
+	// SetContext set the context for logging. All future messages on this logger
+	// will have this context set.
+	SetContext(ctx context.Context)
 	// SetField sets a field on the logger's context. All future messages on this logger
 	// will have this field set.
 	SetField(name string, value interface{})
+	// SetFields sets a fielsd on the logger's context. All future messages on this logger
+	// will have this fields set.
+	SetFields(fields F)
 	// GetFields returns all the fields set on the logger
 	GetFields() F
 	// Debug logs a debug message. If last parameter is a map[string]string, it's content
@@ -76,7 +84,7 @@ type Logger interface {
 	// Output mimics std logger interface
 	Output(calldepth int, s string) error
 	// OutputF outputs message with fields.
-	OutputF(level Level, calldepth int, msg string, fields map[string]interface{})
+	OutputF(level Level, calldepth int, msg string, fields map[string]interface{}, err error)
 }
 
 // LoggerCopier defines a logger with copy support
@@ -101,16 +109,20 @@ type Config struct {
 	// puts a greater pressure on GC and increases the amount of memory allocated
 	// and freed. Use only if persistent loggers are a requirement.
 	DisablePooling bool
+	// DisableCallerInfo removes the caller file info from the log line
+	DisableCallerInfo bool
 }
 
 // F represents a set of log message fields
 type F map[string]interface{}
 
 type logger struct {
-	level          Level
-	output         Output
-	fields         F
-	disablePooling bool
+	level             Level
+	output            Output
+	fields            F
+	ctx               context.Context
+	disablePooling    bool
+	disableCallerInfo bool
 }
 
 // Common field names for log messages.
@@ -119,6 +131,8 @@ var (
 	KeyMessage = "message"
 	KeyLevel   = "level"
 	KeyFile    = "file"
+	KeyError   = "error"
+	KeyContext = "context"
 )
 
 var now = time.Now
@@ -145,13 +159,13 @@ func New(c Config) Logger {
 	}
 	l.level = c.Level
 	l.output = c.Output
+	l.ctx = context.Background()
 	if l.output == nil {
 		l.output = NewOutputChannel(NewConsoleOutput())
 	}
-	for k, v := range c.Fields {
-		l.SetField(k, v)
-	}
+	l.SetFields(c.Fields)
 	l.disablePooling = c.DisablePooling
+	l.disableCallerInfo = c.DisableCallerInfo
 	return l
 }
 
@@ -171,6 +185,7 @@ func (l *logger) Copy() Logger {
 		output:         l.output,
 		fields:         map[string]interface{}{},
 		disablePooling: l.disablePooling,
+		ctx:            l.ctx,
 	}
 	for k, v := range l.fields {
 		l2.fields[k] = v
@@ -188,16 +203,27 @@ func (l *logger) close() {
 	}
 }
 
-func (l *logger) send(level Level, calldepth int, msg string, fields map[string]interface{}) {
+func (l *logger) send(level Level, calldepth int, msg string, fields map[string]interface{}, err error) {
 	if level < l.level || l.output == nil {
 		return
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			l.Errorf("Unable to send message, panic recovered: %s; stack: %s", r, string(debug.Stack()))
+		}
+	}()
 	data := make(map[string]interface{}, 4+len(fields)+len(l.fields))
 	data[KeyTime] = now()
 	data[KeyLevel] = level.String()
 	data[KeyMessage] = msg
-	if _, file, line, ok := runtime.Caller(calldepth); ok {
-		data[KeyFile] = path.Base(file) + ":" + strconv.FormatInt(int64(line), 10)
+	data[KeyContext] = l.ctx
+	if err != nil {
+		data[KeyError] = err
+	}
+	if !l.disableCallerInfo {
+		if _, file, line, ok := runtime.Caller(calldepth); ok {
+			data[KeyFile] = path.Base(file) + ":" + strconv.FormatInt(int64(line), 10)
+		}
 	}
 	for k, v := range fields {
 		data[k] = v
@@ -212,18 +238,33 @@ func (l *logger) send(level Level, calldepth int, msg string, fields map[string]
 	}
 }
 
-func extractFields(v *[]interface{}) map[string]interface{} {
-	if l := len(*v); l > 0 {
-		if f, ok := (*v)[l-1].(map[string]interface{}); ok {
+func extractFields(v *[]interface{}) (map[string]interface{}, error) {
+	var f map[string]interface{}
+	var ok bool
+	var e error
+	if l := len(*v); l > 1 {
+		if e, ok = (*v)[l-1].(error); ok {
 			*v = (*v)[:l-1]
-			return f
-		}
-		if f, ok := (*v)[l-1].(F); ok {
-			*v = (*v)[:l-1]
-			return f
 		}
 	}
-	return nil
+	if l := len(*v); l > 0 {
+		if f, ok = (*v)[l-1].(map[string]interface{}); ok {
+			*v = (*v)[:l-1]
+		} else if f, ok = (*v)[l-1].(F); ok {
+			*v = (*v)[:l-1]
+		}
+	}
+	if l := len(*v); l > 1 && e == nil {
+		if e, ok = (*v)[l-1].(error); ok {
+			*v = (*v)[:l-1]
+		}
+	}
+	return f, e
+}
+
+// SetContext implements Logger interface
+func (l *logger) SetContext(ctx context.Context) {
+	l.ctx = ctx
 }
 
 // SetField implements Logger interface
@@ -234,56 +275,66 @@ func (l *logger) SetField(name string, value interface{}) {
 	l.fields[name] = value
 }
 
+// SetFields implements Logger interface
+func (l *logger) SetFields(fields F) {
+	if l.fields == nil {
+		l.fields = map[string]interface{}{}
+	}
+	for name, value := range fields {
+		l.fields[name] = value
+	}
+}
+
 // GetFields implements Logger interface
 func (l *logger) GetFields() F {
 	return l.fields
 }
 
-// Output implements Logger interface
-func (l *logger) OutputF(level Level, calldepth int, msg string, fields map[string]interface{}) {
-	l.send(level, calldepth+1, msg, fields)
+// OutputF implements Logger interface
+func (l *logger) OutputF(level Level, calldepth int, msg string, fields map[string]interface{}, err error) {
+	l.send(level, calldepth+1, msg, fields, err)
 }
 
 // Debug implements Logger interface
 func (l *logger) Debug(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelDebug, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelDebug, 2, fmt.Sprint(v...), f, e)
 }
 
 // Debugf implements Logger interface
 func (l *logger) Debugf(format string, v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelDebug, 2, fmt.Sprintf(format, v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelDebug, 2, fmt.Sprintf(format, v...), f, e)
 }
 
 // Info implements Logger interface
 func (l *logger) Info(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelInfo, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelInfo, 2, fmt.Sprint(v...), f, e)
 }
 
 // Infof implements Logger interface
 func (l *logger) Infof(format string, v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelInfo, 2, fmt.Sprintf(format, v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelInfo, 2, fmt.Sprintf(format, v...), f, e)
 }
 
 // Warn implements Logger interface
 func (l *logger) Warn(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelWarn, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelWarn, 2, fmt.Sprint(v...), f, e)
 }
 
 // Warnf implements Logger interface
 func (l *logger) Warnf(format string, v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelWarn, 2, fmt.Sprintf(format, v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelWarn, 2, fmt.Sprintf(format, v...), f, e)
 }
 
 // Error implements Logger interface
 func (l *logger) Error(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelError, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelError, 2, fmt.Sprint(v...), f, e)
 }
 
 // Errorf implements Logger interface
@@ -291,21 +342,14 @@ func (l *logger) Error(v ...interface{}) {
 // Go vet users: you may append %v at the end of you format when using xlog.F{} as a last
 // argument to workaround go vet false alarm.
 func (l *logger) Errorf(format string, v ...interface{}) {
-	f := extractFields(&v)
-	if f != nil {
-		// Let user add a %v at the end of the message when fields are passed to satisfy go vet
-		l := len(format)
-		if l > 2 && format[l-2] == '%' && format[l-1] == 'v' {
-			format = format[0 : l-2]
-		}
-	}
-	l.send(LevelError, 2, fmt.Sprintf(format, v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelError, 2, fmt.Sprintf(format, v...), f, e)
 }
 
 // Fatal implements Logger interface
 func (l *logger) Fatal(v ...interface{}) {
-	f := extractFields(&v)
-	l.send(LevelFatal, 2, fmt.Sprint(v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelFatal, 2, fmt.Sprint(v...), f, e)
 	if o, ok := l.output.(*OutputChannel); ok {
 		o.Close()
 	}
@@ -317,15 +361,8 @@ func (l *logger) Fatal(v ...interface{}) {
 // Go vet users: you may append %v at the end of you format when using xlog.F{} as a last
 // argument to workaround go vet false alarm.
 func (l *logger) Fatalf(format string, v ...interface{}) {
-	f := extractFields(&v)
-	if f != nil {
-		// Let user add a %v at the end of the message when fields are passed to satisfy go vet
-		l := len(format)
-		if l > 2 && format[l-2] == '%' && format[l-1] == 'v' {
-			format = format[0 : l-2]
-		}
-	}
-	l.send(LevelFatal, 2, fmt.Sprintf(format, v...), f)
+	f, e := extractFields(&v)
+	l.send(LevelFatal, 2, fmt.Sprintf(format, v...), f, e)
 	if o, ok := l.output.(*OutputChannel); ok {
 		o.Close()
 	}
@@ -335,7 +372,7 @@ func (l *logger) Fatalf(format string, v ...interface{}) {
 // Write implements io.Writer interface
 func (l *logger) Write(p []byte) (int, error) {
 	msg := strings.TrimRight(string(p), "\n")
-	l.send(LevelInfo, 4, msg, nil)
+	l.send(LevelInfo, 4, msg, nil, nil)
 	if o, ok := l.output.(*OutputChannel); ok {
 		o.Flush()
 	}
@@ -343,7 +380,7 @@ func (l *logger) Write(p []byte) (int, error) {
 }
 
 // Output implements common logger interface
-func (l *logger) Output(calldepth int, s string) error {
-	l.send(LevelInfo, 2, s, nil)
+func (l *logger) Output(callDepth int, s string) error {
+	l.send(LevelInfo, callDepth, s, nil, nil)
 	return nil
 }

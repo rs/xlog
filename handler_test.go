@@ -1,3 +1,4 @@
+//go:build go1.7
 // +build go1.7
 
 package xlog
@@ -18,6 +19,27 @@ func TestFromContext(t *testing.T) {
 	l := &logger{}
 	ctx := NewContext(context.Background(), l)
 	assert.Equal(t, l, FromContext(ctx))
+}
+
+func TestFromContextWithStd(t *testing.T) {
+	assert.Equal(t, GetLogger(), FromContextWithStd(nil))
+	assert.Equal(t, GetLogger(), FromContextWithStd(context.Background()))
+	l := &logger{}
+	ctx := NewContext(context.Background(), l)
+	assert.Equal(t, l, FromContext(ctx))
+}
+
+func TestFromContextWithFields(t *testing.T) {
+	fields := F{"a": "a"}
+	l := GetLogger()
+	expected := Copy(l)
+	expected.SetFields(fields)
+	assert.Equal(t, expected, FromContextWithFields(nil, fields))
+	assert.Equal(t, expected, FromContextWithFields(context.Background(), fields))
+	nl := &logger{}
+	ctx := NewContext(context.Background(), nl)
+
+	assert.Equal(t, &logger{fields: fields}, FromContextWithFields(ctx, fields))
 }
 
 func TestNewHandler(t *testing.T) {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"testing"
@@ -27,6 +26,7 @@ func newTestOutputErr(err error) *testOutput {
 }
 
 func (o *testOutput) Write(fields map[string]interface{}) (err error) {
+	delete(fields, KeyContext)
 	o.w <- fields
 	return o.err
 }
@@ -77,7 +77,7 @@ func TestOutputChannelError(t *testing.T) {
 		critialLogger = oldCritialLogger
 		w.Close()
 	}()
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	assert.NoError(t, err)
 	assert.Contains(t, string(b), "cannot write log message: some error")
 }
@@ -215,9 +215,11 @@ func TestSyslogOutput(t *testing.T) {
 	}()
 	m := NewSyslogOutput("udp", "127.0.0.1:1234", "mytag")
 	assert.IsType(t, LevelOutput{}, m)
-	assert.Panics(t, func() {
-		NewSyslogOutput("tcp", "an invalid host name", "mytag")
-	})
+	assert.Panics(
+		t, func() {
+			NewSyslogOutput("tcp", "an invalid host name", "mytag")
+		},
+	)
 	assert.Regexp(t, "syslog dial error: dial tcp:.*missing port in address.*", buf.String())
 }
 
@@ -260,8 +262,13 @@ func TestNewConsoleOutputW(t *testing.T) {
 
 func TestConsoleOutput(t *testing.T) {
 	buf := &bytes.Buffer{}
-	c := consoleOutput{w: buf}
-	err := c.Write(F{"message": "some message", "level": "info", "time": time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC), "foo": "bar"})
+	c := consoleOutput{w: buf, isTerminal: true}
+	err := c.Write(
+		F{
+			"message": "some message", "level": "info", "time": time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
+			"foo": "bar",
+		},
+	)
 	assert.NoError(t, err)
 	assert.Equal(t, "2000/01/02 03:04:05 \x1b[34mINFO\x1b[0m some message \x1b[32mfoo\x1b[0m=bar\n", buf.String())
 	buf.Reset()
@@ -281,18 +288,24 @@ func TestConsoleOutput(t *testing.T) {
 func TestLogfmtOutput(t *testing.T) {
 	buf := &bytes.Buffer{}
 	c := NewLogfmtOutput(buf)
-	err := c.Write(F{
-		"time":    time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
-		"message": "some message",
-		"level":   "info",
-		"string":  "foo",
-		"null":    nil,
-		"quoted":  "needs \" quotes",
-		"err":     errors.New("error"),
-		"errq":    errors.New("error with \" quote"),
-	})
+	err := c.Write(
+		F{
+			"time":    time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
+			"message": "some message",
+			"level":   "info",
+			"string":  "foo",
+			"null":    nil,
+			"quoted":  "needs \" quotes",
+			"err":     errors.New("error"),
+			"errq":    errors.New("error with \" quote"),
+		},
+	)
 	assert.NoError(t, err)
-	assert.Equal(t, "level=info message=\"some message\" time=\"2000-01-02 03:04:05 +0000 UTC\" err=error errq=\"error with \\\" quote\" null=null quoted=\"needs \\\" quotes\" string=foo\n", buf.String())
+	assert.Equal(
+		t,
+		"level=info message=\"some message\" time=\"2000-01-02 03:04:05 +0000 UTC\" err=error errq=\"error with \\\" quote\" null=null quoted=\"needs \\\" quotes\" string=foo\n",
+		buf.String(),
+	)
 }
 
 func TestJSONOutput(t *testing.T) {
@@ -306,15 +319,21 @@ func TestJSONOutput(t *testing.T) {
 func TestLogstashOutput(t *testing.T) {
 	buf := &bytes.Buffer{}
 	o := NewLogstashOutput(buf)
-	err := o.Write(F{
-		"message": "some message",
-		"level":   "info",
-		"time":    time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
-		"file":    "test.go:234",
-		"foo":     "bar",
-	})
+	err := o.Write(
+		F{
+			"message": "some message",
+			"level":   "info",
+			"time":    time.Date(2000, 1, 2, 3, 4, 5, 0, time.UTC),
+			"file":    "test.go:234",
+			"foo":     "bar",
+		},
+	)
 	assert.NoError(t, err)
-	assert.Equal(t, "{\"@timestamp\":\"2000-01-02T03:04:05Z\",\"@version\":1,\"file\":\"test.go:234\",\"foo\":\"bar\",\"level\":\"INFO\",\"message\":\"some message\"}", buf.String())
+	assert.Equal(
+		t,
+		"{\"@timestamp\":\"2000-01-02T03:04:05Z\",\"@version\":1,\"file\":\"test.go:234\",\"foo\":\"bar\",\"level\":\"INFO\",\"message\":\"some message\"}",
+		buf.String(),
+	)
 }
 
 func TestUIDOutput(t *testing.T) {

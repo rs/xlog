@@ -1,3 +1,4 @@
+//go:build go1.7
 // +build go1.7
 
 package xlog
@@ -41,6 +42,29 @@ func FromContext(ctx context.Context) Logger {
 	if !ok {
 		return NopLogger
 	}
+	return l
+}
+
+// FromContextWithStd gets the logger out of the context.
+// If not logger is stored in the context, a GetLogger is returned.
+func FromContextWithStd(ctx context.Context) Logger {
+	if ctx == nil {
+		return GetLogger()
+	}
+	l, ok := ctx.Value(logKey).(Logger)
+	if !ok {
+		return GetLogger()
+	}
+	return l
+}
+
+// FromContextWithFields gets the logger out of the context.
+// If not logger is stored in the context, a GetLogger is returned.
+func FromContextWithFields(ctx context.Context, fields F) Logger {
+	l := FromContextWithStd(ctx)
+	l = Copy(l)
+	l.SetFields(fields)
+
 	return l
 }
 

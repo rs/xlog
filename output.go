@@ -12,7 +12,8 @@ import (
 	"time"
 
 	"github.com/rs/xid"
-	"github.com/rs/xlog/internal/term"
+
+	"github.com/Ak-Army/xlog/internal/term"
 )
 
 // Output sends a log message fields to a destination.
@@ -110,9 +111,11 @@ func (oc *OutputChannel) Close() {
 }
 
 // Discard is an Output that discards all log message going thru it.
-var Discard = OutputFunc(func(fields map[string]interface{}) error {
-	return nil
-})
+var Discard = OutputFunc(
+	func(fields map[string]interface{}) error {
+		return nil
+	},
+)
 
 var bufPool = &sync.Pool{
 	New: func() interface{} {
@@ -200,7 +203,8 @@ func (l *RecorderOutput) Reset() {
 }
 
 type consoleOutput struct {
-	w io.Writer
+	w          io.Writer
+	isTerminal bool
 }
 
 var isTerminal = term.IsTerminal
@@ -211,16 +215,91 @@ func NewConsoleOutput() Output {
 	return NewConsoleOutputW(os.Stderr, NewLogfmtOutput(os.Stderr))
 }
 
+// NewForceConsoleOutput returns a Output printing message in a colored human readable form on the
+// stderr. If the stderr is not on a terminal, a color is returned stripped.
+func NewForceConsoleOutput() Output {
+	return consoleOutput{
+		w:          os.Stderr,
+		isTerminal: isTerminal(os.Stderr),
+	}
+}
+
 // NewConsoleOutputW returns a Output printing message in a colored human readable form with
 // the provided writer. If the writer is not on a terminal, the noTerm output is returned.
 func NewConsoleOutputW(w io.Writer, noTerm Output) Output {
 	if isTerminal(w) {
-		return consoleOutput{w: w}
+		return consoleOutput{w: w, isTerminal: true}
 	}
 	return noTerm
 }
 
+// NewForceConsoleOutputW returns a Output printing message in a colored human readable form with
+// the provided writer. If the writer is not on a terminal, a color is returned stripped.
+func NewForceConsoleOutputW(w io.Writer) Output {
+	return consoleOutput{
+		w:          w,
+		isTerminal: isTerminal(w),
+	}
+}
+
 func (o consoleOutput) Write(fields map[string]interface{}) error {
+	if o.isTerminal {
+		return o.writeWithColor(fields)
+	}
+	return o.write(fields)
+}
+
+func (o consoleOutput) write(fields map[string]interface{}) error {
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+	if ts, ok := fields[KeyTime].(time.Time); ok {
+		buf.Write([]byte(ts.Format("2006/01/02 15:04:05 ")))
+	}
+	if lvl, ok := fields[KeyLevel].(string); ok {
+		buf.Write([]byte(strings.ToUpper(lvl[0:4])))
+		buf.WriteByte(' ')
+	}
+	if msg, ok := fields[KeyMessage].(string); ok {
+		msg = strings.Replace(msg, "\n", "\\n", -1)
+		buf.Write([]byte(msg))
+	}
+	if msg, ok := fields[KeyError]; ok {
+		buf.WriteByte(' ')
+		buf.Write([]byte(KeyError))
+		buf.WriteByte('=')
+		if err := writeValue(buf, msg); err != nil {
+			return err
+		}
+	}
+	// Gather field keys
+	keys := []string{}
+	for k := range fields {
+		switch k {
+		case KeyLevel, KeyMessage, KeyTime, KeyError, KeyContext:
+			continue
+		}
+		keys = append(keys, k)
+	}
+	// Sort fields by key names
+	sort.Strings(keys)
+	// Print fields using logfmt format
+	for _, k := range keys {
+		buf.WriteByte(' ')
+		buf.Write([]byte(k))
+		buf.WriteByte('=')
+		if err := writeValue(buf, fields[k]); err != nil {
+			return err
+		}
+	}
+	buf.WriteByte('\n')
+	_, err := o.w.Write(buf.Bytes())
+	return err
+}
+
+func (o consoleOutput) writeWithColor(fields map[string]interface{}) error {
 	buf := bufPool.Get().(*bytes.Buffer)
 	defer func() {
 		buf.Reset()
@@ -246,11 +325,19 @@ func (o consoleOutput) Write(fields map[string]interface{}) error {
 		msg = strings.Replace(msg, "\n", "\\n", -1)
 		buf.Write([]byte(msg))
 	}
+	if msg, ok := fields[KeyError]; ok {
+		buf.WriteByte(' ')
+		colorPrint(buf, KeyError, red)
+		buf.WriteByte('=')
+		if err := writeValue(buf, msg); err != nil {
+			return err
+		}
+	}
 	// Gather field keys
 	keys := []string{}
 	for k := range fields {
 		switch k {
-		case KeyLevel, KeyMessage, KeyTime:
+		case KeyLevel, KeyMessage, KeyTime, KeyError, KeyContext:
 			continue
 		}
 		keys = append(keys, k)
@@ -290,7 +377,7 @@ func (o logfmtOutput) Write(fields map[string]interface{}) error {
 	keys := []string{}
 	for k := range fields {
 		switch k {
-		case KeyLevel, KeyMessage, KeyTime:
+		case KeyLevel, KeyMessage, KeyTime, KeyError, KeyContext:
 			continue
 		}
 		keys = append(keys, k)
@@ -298,7 +385,11 @@ func (o logfmtOutput) Write(fields map[string]interface{}) error {
 	// Sort fields by key names
 	sort.Strings(keys)
 	// Prepend default fields in a specific order
-	keys = append([]string{KeyLevel, KeyMessage, KeyTime}, keys...)
+	if _, ok := fields[KeyError]; ok {
+		keys = append([]string{KeyLevel, KeyMessage, KeyError, KeyTime}, keys...)
+	} else {
+		keys = append([]string{KeyLevel, KeyMessage, KeyTime}, keys...)
+	}
 	l := len(keys)
 	for i, k := range keys {
 		buf.Write([]byte(k))
@@ -319,73 +410,83 @@ func (o logfmtOutput) Write(fields map[string]interface{}) error {
 // NewJSONOutput returns a new JSON output with the given writer.
 func NewJSONOutput(w io.Writer) Output {
 	enc := json.NewEncoder(w)
-	return OutputFunc(func(fields map[string]interface{}) error {
-		return enc.Encode(fields)
-	})
+	return OutputFunc(
+		func(fields map[string]interface{}) error {
+			return enc.Encode(fields)
+		},
+	)
 }
 
 // NewLogstashOutput returns an output to generate logstash friendly JSON format.
 func NewLogstashOutput(w io.Writer) Output {
-	return OutputFunc(func(fields map[string]interface{}) error {
-		lsf := map[string]interface{}{
-			"@version": 1,
-		}
-		for k, v := range fields {
-			switch k {
-			case KeyTime:
-				k = "@timestamp"
-			case KeyLevel:
-				if s, ok := v.(string); ok {
-					v = strings.ToUpper(s)
+	return OutputFunc(
+		func(fields map[string]interface{}) error {
+			lsf := map[string]interface{}{
+				"@version": 1,
+			}
+			for k, v := range fields {
+				switch k {
+				case KeyTime:
+					k = "@timestamp"
+				case KeyLevel:
+					if s, ok := v.(string); ok {
+						v = strings.ToUpper(s)
+					}
+				}
+				if t, ok := v.(time.Time); ok {
+					lsf[k] = t.Format(time.RFC3339)
+				} else {
+					lsf[k] = v
 				}
 			}
-			if t, ok := v.(time.Time); ok {
-				lsf[k] = t.Format(time.RFC3339)
-			} else {
-				lsf[k] = v
+			b, err := json.Marshal(lsf)
+			if err != nil {
+				return err
 			}
-		}
-		b, err := json.Marshal(lsf)
-		if err != nil {
+			_, err = w.Write(b)
 			return err
-		}
-		_, err = w.Write(b)
-		return err
-	})
+		},
+	)
 }
 
 // NewUIDOutput returns an output filter adding a globally unique id (using github.com/rs/xid)
 // to all message going thru this output. The o parameter defines the next output to pass data
 // to.
 func NewUIDOutput(field string, o Output) Output {
-	return OutputFunc(func(fields map[string]interface{}) error {
-		fields[field] = xid.New().String()
-		return o.Write(fields)
-	})
+	return OutputFunc(
+		func(fields map[string]interface{}) error {
+			fields[field] = xid.New().String()
+			return o.Write(fields)
+		},
+	)
 }
 
 // NewTrimOutput trims any field of type string with a value length greater than maxLen
 // to maxLen.
 func NewTrimOutput(maxLen int, o Output) Output {
-	return OutputFunc(func(fields map[string]interface{}) error {
-		for k, v := range fields {
-			if s, ok := v.(string); ok && len(s) > maxLen {
-				fields[k] = s[:maxLen]
+	return OutputFunc(
+		func(fields map[string]interface{}) error {
+			for k, v := range fields {
+				if s, ok := v.(string); ok && len(s) > maxLen {
+					fields[k] = s[:maxLen]
+				}
 			}
-		}
-		return o.Write(fields)
-	})
+			return o.Write(fields)
+		},
+	)
 }
 
 // NewTrimFieldsOutput trims listed field fields of type string with a value length greater than maxLen
 // to maxLen.
 func NewTrimFieldsOutput(trimFields []string, maxLen int, o Output) Output {
-	return OutputFunc(func(fields map[string]interface{}) error {
-		for _, f := range trimFields {
-			if s, ok := fields[f].(string); ok && len(s) > maxLen {
-				fields[f] = s[:maxLen]
+	return OutputFunc(
+		func(fields map[string]interface{}) error {
+			for _, f := range trimFields {
+				if s, ok := fields[f].(string); ok && len(s) > maxLen {
+					fields[f] = s[:maxLen]
+				}
 			}
-		}
-		return o.Write(fields)
-	})
+			return o.Write(fields)
+		},
+	)
 }

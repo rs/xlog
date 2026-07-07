@@ -1,8 +1,9 @@
 package xlog
 
 import (
+	"context"
+	"errors"
 	"io"
-	"io/ioutil"
 	"log"
 	"sync"
 	"testing"
@@ -116,27 +117,30 @@ func TestNewDefautOutput(t *testing.T) {
 func TestSend(t *testing.T) {
 	o := newTestOutput()
 	l := New(Config{Output: o}).(*logger)
-	l.send(LevelDebug, 1, "test", F{"foo": "bar"})
+	l.send(LevelDebug, 1, "test", F{"foo": "bar"}, nil)
 	last := <-o.w
 	assert.Contains(t, last["file"], "log_test.go:")
 	delete(last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "debug", "message": "test", "foo": "bar"}, last)
 
 	l.SetField("bar", "baz")
-	l.send(LevelInfo, 1, "test", F{"foo": "bar"})
+	l.send(LevelInfo, 1, "test", F{"foo": "bar"}, nil)
 	last = <-o.w
 	assert.Contains(t, last["file"], "log_test.go:")
 	delete(last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test", "foo": "bar", "bar": "baz"}, last)
+	assert.Equal(
+		t,
+		map[string]interface{}{"time": fakeNow, "level": "info", "message": "test", "foo": "bar", "bar": "baz"},
+		last,
+	)
 
 	l = New(Config{Output: o, Level: 1}).(*logger)
 	o.reset()
-	l.send(0, 2, "test", F{"foo": "bar"})
+	l.send(0, 2, "test", F{"foo": "bar"}, nil)
 	assert.True(t, o.empty())
 }
 
 func TestSendDrop(t *testing.T) {
-	t.Skip()
 	r, w := io.Pipe()
 	go func() {
 		critialLoggerMux.Lock()
@@ -146,9 +150,9 @@ func TestSendDrop(t *testing.T) {
 		o := newTestOutput()
 		oc := NewOutputChannelBuffer(Discard, 1)
 		l := New(Config{Output: oc}).(*logger)
-		l.send(LevelDebug, 2, "test", F{"foo": "bar"})
-		l.send(LevelDebug, 2, "test", F{"foo": "bar"})
-		l.send(LevelDebug, 2, "test", F{"foo": "bar"})
+		l.send(LevelDebug, 2, "test", F{"foo": "bar"}, nil)
+		l.send(LevelDebug, 2, "test", F{"foo": "bar"}, nil)
+		l.send(LevelDebug, 2, "test", F{"foo": "bar"}, nil)
 		o.get()
 		o.get()
 		o.get()
@@ -156,30 +160,41 @@ func TestSendDrop(t *testing.T) {
 		critialLogger = oldCritialLogger
 		w.Close()
 	}()
-	b, err := ioutil.ReadAll(r)
+
+	b, err := io.ReadAll(r)
 	assert.NoError(t, err)
 	assert.Contains(t, string(b), "send error: buffer full")
 }
 
 func TestExtractFields(t *testing.T) {
-	v := []interface{}{"a", 1, map[string]interface{}{"foo": "bar"}}
-	f := extractFields(&v)
+	err := errors.New("err")
+	v := []interface{}{"a", 1, err, map[string]interface{}{"foo": "bar"}}
+	f, e := extractFields(&v)
 	assert.Equal(t, map[string]interface{}{"foo": "bar"}, f)
 	assert.Equal(t, []interface{}{"a", 1}, v)
+	assert.Equal(t, err, e)
 
 	v = []interface{}{map[string]interface{}{"foo": "bar"}, "a", 1}
-	f = extractFields(&v)
+	f, e = extractFields(&v)
 	assert.Nil(t, f)
+	assert.Nil(t, e)
+	assert.Equal(t, []interface{}{map[string]interface{}{"foo": "bar"}, "a", 1}, v)
+
+	v = []interface{}{map[string]interface{}{"foo": "bar"}, "a", 1}
+	f, e = extractFields(&v)
+	assert.Nil(t, f)
+	assert.Nil(t, e)
 	assert.Equal(t, []interface{}{map[string]interface{}{"foo": "bar"}, "a", 1}, v)
 
 	v = []interface{}{"a", 1, F{"foo": "bar"}}
-	f = extractFields(&v)
+	f, e = extractFields(&v)
 	assert.Equal(t, map[string]interface{}{"foo": "bar"}, f)
 	assert.Equal(t, []interface{}{"a", 1}, v)
 
 	v = []interface{}{}
-	f = extractFields(&v)
+	f, e = extractFields(&v)
 	assert.Nil(t, f)
+	assert.Nil(t, e)
 	assert.Equal(t, []interface{}{}, v)
 }
 
@@ -267,7 +282,11 @@ func TestErrorf(t *testing.T) {
 	last := <-o.w
 	assert.Contains(t, last["file"], "log_test.go:")
 	delete(last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1", "foo": "bar"}, last)
+	assert.Equal(
+		t,
+		map[string]interface{}{"time": fakeNow, "level": "error", "message": "test 1%!v(MISSING)", "foo": "bar"},
+		last,
+	)
 }
 
 func TestFatal(t *testing.T) {
@@ -296,7 +315,11 @@ func TestFatalf(t *testing.T) {
 	last := <-o.w
 	assert.Contains(t, last["file"], "log_test.go:")
 	delete(last, "file")
-	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test 1", "foo": "bar"}, last)
+	assert.Equal(
+		t,
+		map[string]interface{}{"time": fakeNow, "level": "fatal", "message": "test 1%!v(MISSING)", "foo": "bar"},
+		last,
+	)
 	assert.Equal(t, 1, exited)
 }
 
@@ -319,4 +342,40 @@ func TestOutput(t *testing.T) {
 	assert.Contains(t, last["file"], "log_test.go:")
 	delete(last, "file")
 	assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test"}, last)
+}
+
+func TestOutput2(t *testing.T) {
+	o := newTestOutput()
+	l := New(Config{Output: o}).(*logger)
+	done := make(chan struct{})
+	end := make(chan struct{})
+	go func() {
+		defer close(end)
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				l.Output(2, "test")
+				last := <-o.w
+				assert.Contains(t, last["file"], "log_test.go:")
+				delete(last, "file")
+				assert.Equal(t, map[string]interface{}{"time": fakeNow, "level": "info", "message": "test"}, last)
+			}
+		}
+	}()
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				ll := l.Copy()
+				ll.SetContext(context.Background())
+			}
+		}
+	}()
+	time.Sleep(time.Second)
+	close(done)
+	<-end
 }
